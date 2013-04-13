@@ -40,6 +40,9 @@ class Player:
             self.horiz_dir = 1
         else:
             self.horiz_dir = 0
+        if pygame.key.get_pressed()[K_UP] and self.falling == False: #allows jumping while on the ground
+            self.falling = True
+            self.y_veloc = -TERRAIN_Y_SIZE / 5
     def gravity(self): #checks if the player has collided with the terrain
         if self.falling == False: #if the player is not falling and is not standing on a block, begin falling
             for terrain in self.parent.terrain_list:
