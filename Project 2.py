@@ -4,12 +4,12 @@ from pygame.locals import *
 #Constants
 BLACK = (0, 0, 0) #Color code
 FPS = 40 #The frame rate
-PLAYER_X_SIZE = 40 #The pixel sizes of the player sprite
-PLAYER_Y_SIZE = 40
 SCREEN_WIDTH = 800 #The values that determine the window size
 SCREEN_HEIGHT = 600
 TERRAIN_X_SIZE = 80 #The pixel size of a standard terrain block
 TERRAIN_Y_SIZE = 60
+PLAYER_X_SIZE = 2 * TERRAIN_X_SIZE / 3 #The pixel sizes of the player sprite
+PLAYER_Y_SIZE = 2 * TERRAIN_Y_SIZE / 3
 PLAYER_SPEED_RATIO = 20.0
 
 pygame.init()
@@ -25,8 +25,8 @@ class Player:
         self.rect = self.image.get_rect()
         self.x = 1 * TERRAIN_X_SIZE + .5 * PLAYER_X_SIZE + .0 #starting coordinates
         self.y = 2 * TERRAIN_Y_SIZE + .0 #the method for these will change with level generation
-        self.rect.left = self.x
-        self.rect.top = self.y
+        self.rect.left = (SCREEN_WIDTH / 2) - (self.rect.width / 2)
+        self.rect.top = (SCREEN_HEIGHT / 2) - (self.rect.height / 2)
         self.horiz_dir = horiz_dir
         self.falling = False
         self.just_landed = False
@@ -113,11 +113,11 @@ class Controller:
         self.window.fill(BLACK) #Clear the screen
         self.window.blit(self.player.image, self.player.rect) #Draw the player
         for terrain in self.terrain_list: #Draw each terrain object
-            self.window.blit(self.terrain_textures[terrain.ID], terrain.rect)
+            draw_x = terrain.rect.left - self.player.x + self.player.rect.left
+            draw_y = terrain.rect.top - self.player.y + self.player.rect.top
+            self.window.blit(self.terrain_textures[terrain.ID], Rect(draw_x, draw_y, TERRAIN_X_SIZE, TERRAIN_Y_SIZE))
         pygame.display.update() #Move drawn objects to the screen
     def update_player(self): #Updates the player's position
-        self.player.rect.left = self.player.x #Update the player's apparent location
-        self.player.rect.top = self.player.y #to match their actual location
         self.player.input_check() #Checks the player's input
         self.player.gravity() #Simulates gravity and downward collision detection
         if self.player.horiz_dir != 0:
