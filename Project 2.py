@@ -36,10 +36,12 @@ class Player:
         self.y = self.y + ym
     def input_check(self): #adjusts player movement direction
         if pygame.key.get_pressed()[K_LEFT]:
-            self.horiz_dir = -1
+            if self.horiz_dir >= -2 and self.falling == False:
+                self.horiz_dir = self.horiz_dir - .2
         elif pygame.key.get_pressed()[K_RIGHT]:
-            self.horiz_dir = 1
-        else:
+            if self.horiz_dir <= 2 and self.falling == False:
+                self.horiz_dir = self.horiz_dir + .2
+        elif self.falling == False:
             self.horiz_dir = 0
         if pygame.key.get_pressed()[K_UP] and self.falling == False and self.just_landed == False: #allows jumping while on the ground
             self.falling = True
@@ -98,14 +100,7 @@ class Controller:
         for ID in range(1): #Add the terrain texture list to memory
             self.terrain_textures.append(self.create_terrain_texture(ID))
         self.terrain_list = []
-        self.terrain_list.append(Terrain(self, 0, 1, 3))
-        self.terrain_list.append(Terrain(self, 0, 2, 3))
-        self.terrain_list.append(Terrain(self, 0, 3, 3))
-        self.terrain_list.append(Terrain(self, 0, 4, 4))
-        self.terrain_list.append(Terrain(self, 0, 5, 4))
-        self.terrain_list.append(Terrain(self, 0, 6, 3))
-        self.terrain_list.append(Terrain(self, 0, 6, 1))
-        self.terrain_list.append(Terrain(self, 0, 7, 2))
+        self.generate_terrain(1)
     def update_all(self): #Updates all updatable entities
         self.update_player()
         self.update_window()
@@ -124,6 +119,18 @@ class Controller:
             self.player.movement_check() #Horizontal movement and associated collision detection
     def create_terrain_texture(self, ID): #Generates a preloaded terrain texture for convenient access
         return pygame.transform.scale(pygame.image.load("Terrain" + str(ID) + ".png"), (TERRAIN_X_SIZE, TERRAIN_Y_SIZE))
+    def generate_terrain(self, level_num): #Reads a given level and builds appropriate terrain
+        terrain_raw = open(r"Level Data\Level " + str(level_num) + ".txt", "r") #Access the level file
+        done_cycling = False
+        while not done_cycling:
+            terrain_obj_raw = terrain_raw.readline()[:-1] #obtain a line (minus the newline character)
+            print terrain_obj_raw
+            if terrain_obj_raw == "":
+                done_cycling = True
+            else:
+                terrain_obj_split = terrain_obj_raw.split() #split the line into its component numbers
+                print terrain_obj_split
+                self.terrain_list.append(Terrain(self, int(terrain_obj_split[0]), int(terrain_obj_split[1]), int(terrain_obj_split[2]))) #use the split numbers to create a terrain object
     def run(self): #The main loop
         STOP = False
         while not STOP: 
@@ -133,7 +140,6 @@ class Controller:
                 if event.type == QUIT:
                     STOP = True
                     pygame.quit()
-
 
 bwin = Controller(SCREEN_WIDTH, SCREEN_HEIGHT)
 bwin.run()
