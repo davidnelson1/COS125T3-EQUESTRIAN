@@ -11,6 +11,7 @@ TERRAIN_Y_SIZE = 60
 PLAYER_X_SIZE = 2 * TERRAIN_X_SIZE / 3 #The pixel sizes of the player sprite
 PLAYER_Y_SIZE = 2 * TERRAIN_Y_SIZE / 3
 PLAYER_SPEED_RATIO = 20.0
+PLAYER_ACCEL_RATIO = 160.0
 
 pygame.init()
 pygame.display.set_caption("Horse Game, Version 1")
@@ -37,15 +38,15 @@ class Player:
     def input_check(self): #adjusts player movement direction
         if pygame.key.get_pressed()[K_LEFT]:
             if self.horiz_dir >= -2 and self.falling == False:
-                self.horiz_dir = self.horiz_dir - .2
+                self.horiz_dir = self.horiz_dir - TERRAIN_X_SIZE / PLAYER_ACCEL_RATIO
         elif pygame.key.get_pressed()[K_RIGHT]:
             if self.horiz_dir <= 2 and self.falling == False:
-                self.horiz_dir = self.horiz_dir + .2
+                self.horiz_dir = self.horiz_dir + TERRAIN_X_SIZE / PLAYER_ACCEL_RATIO
         elif self.falling == False:
             self.horiz_dir = 0
         if pygame.key.get_pressed()[K_UP] and self.falling == False and self.just_landed == False: #allows jumping while on the ground
             self.falling = True
-            self.y_veloc = -TERRAIN_Y_SIZE / 5
+            self.y_veloc = -TERRAIN_Y_SIZE / 4.5
     def gravity(self): #checks if the player has collided with the terrain
         if self.falling == False: #if the player is not falling and is not standing on a block, begin falling
             if self.just_landed == True: #This adds a waiting frame between possible jumps to prevent a collision issue
@@ -75,7 +76,12 @@ class Player:
         for terrain in self.parent.terrain_list:
             if Rect(self.x + (self.horiz_dir * TERRAIN_X_SIZE / PLAYER_SPEED_RATIO), self.y - TERRAIN_Y_SIZE / 24, self.rect.width, self.rect.height).colliderect(terrain.rect):
                 self.move((-self.horiz_dir * TERRAIN_X_SIZE / PLAYER_SPEED_RATIO), 0)
-                self.horiz_dir = 0
+                if self.horiz_dir > 0:
+                    self.horiz_dir = self.horiz_dir - TERRAIN_X_SIZE / PLAYER_ACCEL_RATIO
+                    self.movement_check()
+                elif self.horiz_dir < 0:
+                    self.horiz_dir = self.horiz_dir + TERRAIN_X_SIZE / PLAYER_ACCEL_RATIO
+                    self.movement_check()
                 return
                     
 
@@ -124,12 +130,10 @@ class Controller:
         done_cycling = False
         while not done_cycling:
             terrain_obj_raw = terrain_raw.readline()[:-1] #obtain a line (minus the newline character)
-            print terrain_obj_raw
             if terrain_obj_raw == "":
                 done_cycling = True
             else:
                 terrain_obj_split = terrain_obj_raw.split() #split the line into its component numbers
-                print terrain_obj_split
                 self.terrain_list.append(Terrain(self, int(terrain_obj_split[0]), int(terrain_obj_split[1]), int(terrain_obj_split[2]))) #use the split numbers to create a terrain object
     def run(self): #The main loop
         STOP = False
