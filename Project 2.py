@@ -29,6 +29,7 @@ class Player:
         self.rect.top = self.y
         self.horiz_dir = horiz_dir
         self.falling = False
+        self.just_landed = False
         self.y_veloc = 0.0
     def move(self, xm, ym): #adjusts the player's position
         self.x = self.x + xm
@@ -40,24 +41,31 @@ class Player:
             self.horiz_dir = 1
         else:
             self.horiz_dir = 0
-        if pygame.key.get_pressed()[K_UP] and self.falling == False: #allows jumping while on the ground
+        if pygame.key.get_pressed()[K_UP] and self.falling == False and self.just_landed == False: #allows jumping while on the ground
             self.falling = True
             self.y_veloc = -TERRAIN_Y_SIZE / 5
     def gravity(self): #checks if the player has collided with the terrain
         if self.falling == False: #if the player is not falling and is not standing on a block, begin falling
+            if self.just_landed == True: #This adds a waiting frame between possible jumps to prevent a collision issue
+                self.just_landed = False
             for terrain in self.parent.terrain_list:
-                if self.rect.colliderect(terrain.rect):
+                if Rect(self.x, self.y + TERRAIN_Y_SIZE / 24, self.rect.width, self.rect.height).colliderect(terrain.rect):
                     return
             self.falling = True
             return
         else: #if the player is falling
-            self.y_veloc = self.y_veloc + TERRAIN_Y_SIZE / 60 #accelerate downward
-            for dist in range(0, int(self.y_veloc)): #Check for collisions, and end fall if one is detected
+            self.y_veloc = self.y_veloc + TERRAIN_Y_SIZE / 60.0 #accelerate downward
+            if int(self.y_veloc) == 0:
+                step = 1
+            else:
+                step = int(self.y_veloc / abs(self.y_veloc))
+            for dist in range(step, int(self.y_veloc), step): #Check for collisions, and end fall if one is detected
                 for terrain in self.parent.terrain_list:
                     if Rect(self.x, self.y + dist, self.rect.width, self.rect.height).colliderect(terrain.rect):
                         self.falling = False
                         self.y_veloc = 0.0
                         self.y = self.y + dist
+                        self.just_landed = True
                         return
         self.move(0, self.y_veloc) #Actually move the player
     def movement_check(self): #checks to see if the player is allowed to continue moving, and stops or moves them as appropriate
@@ -96,6 +104,8 @@ class Controller:
         self.terrain_list.append(Terrain(self, 0, 4, 4))
         self.terrain_list.append(Terrain(self, 0, 5, 4))
         self.terrain_list.append(Terrain(self, 0, 6, 3))
+        self.terrain_list.append(Terrain(self, 0, 6, 1))
+        self.terrain_list.append(Terrain(self, 0, 7, 2))
     def update_all(self): #Updates all updatable entities
         self.update_player()
         self.update_window()
