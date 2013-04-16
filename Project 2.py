@@ -10,7 +10,7 @@ TERRAIN_X_SIZE = 80 #The pixel size of a standard terrain block
 TERRAIN_Y_SIZE = 60
 PLAYER_X_SIZE = 2 * TERRAIN_X_SIZE / 3 #The pixel sizes of the player sprite
 PLAYER_Y_SIZE = 2 * TERRAIN_Y_SIZE / 3
-PLAYER_SPEED_RATIO = 40.0
+PLAYER_SPEED_RATIO = 35.0
 
 pygame.init()
 pygame.display.set_caption("Horse Game, Version 1")
@@ -67,7 +67,13 @@ class Player:
             for dist in range(step, int(self.y_veloc), step): #Check for collisions, and end fall if one is detected
                 for terrain in self.parent.terrain_list:
                     if terrain.ID == 0: #check if the block is collideable, ignore it otherwise
-                        if Rect(self.x, self.y + dist, self.rect.width, self.rect.height).colliderect(terrain.rect):
+                        if Rect(self.x, self.y, self.rect.width, self.rect.height).colliderect(terrain.rect):
+                            self.falling = False
+                            self.y_veloc = 0.0
+                            self.y = self.y - TERRAIN_Y_SIZE / 24
+                            self.just_landed = True
+                            return
+                        elif Rect(self.x, self.y + dist, self.rect.width, self.rect.height).colliderect(terrain.rect):
                             self.falling = False
                             self.y_veloc = 0.0
                             self.y = self.y + dist
