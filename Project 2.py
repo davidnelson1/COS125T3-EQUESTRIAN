@@ -10,8 +10,7 @@ TERRAIN_X_SIZE = 80 #The pixel size of a standard terrain block
 TERRAIN_Y_SIZE = 60
 PLAYER_X_SIZE = 2 * TERRAIN_X_SIZE / 3 #The pixel sizes of the player sprite
 PLAYER_Y_SIZE = 2 * TERRAIN_Y_SIZE / 3
-PLAYER_SPEED_RATIO = 20.0
-PLAYER_ACCEL_RATIO = 160.0
+PLAYER_SPEED_RATIO = 40.0
 
 pygame.init()
 pygame.display.set_caption("Horse Game, Version 1")
@@ -19,7 +18,7 @@ pygame.display.set_caption("Horse Game, Version 1")
 #This class tracks data related to the player.
 #There should only be one instance of this class.
 class Player:
-    def __init__(self, parent, horiz_dir):
+    def __init__(self, parent, x_veloc):
         self.parent = parent
         #loads the player image and scales it to the required size
         self.image = pygame.transform.scale(pygame.image.load("testhorse.png"), (PLAYER_X_SIZE, PLAYER_Y_SIZE))
@@ -28,7 +27,7 @@ class Player:
         self.y = 2 * TERRAIN_Y_SIZE + .0 #the method for these will change with level generation
         self.rect.left = (SCREEN_WIDTH / 2) - (self.rect.width / 2)
         self.rect.top = (SCREEN_HEIGHT / 2) - (self.rect.height / 2)
-        self.horiz_dir = horiz_dir
+        self.x_veloc = x_veloc
         self.falling = False
         self.just_landed = False
         self.y_veloc = 0.0
@@ -36,14 +35,16 @@ class Player:
         self.x = self.x + xm
         self.y = self.y + ym
     def input_check(self): #adjusts player movement direction
-        if pygame.key.get_pressed()[K_LEFT]:
-            if self.horiz_dir >= -2 and self.falling == False:
-                self.horiz_dir = self.horiz_dir - TERRAIN_X_SIZE / PLAYER_ACCEL_RATIO
-        elif pygame.key.get_pressed()[K_RIGHT]:
-            if self.horiz_dir <= 2 and self.falling == False:
-                self.horiz_dir = self.horiz_dir + TERRAIN_X_SIZE / PLAYER_ACCEL_RATIO
-        elif self.falling == False:
-            self.horiz_dir = 0
+        if pygame.key.get_pressed()[K_LSHIFT]: #increases the player's movement speed if shift is held
+            adjust_length = 2 * TERRAIN_X_SIZE / PLAYER_SPEED_RATIO
+        else:
+            adjust_length = TERRAIN_X_SIZE / PLAYER_SPEED_RATIO
+        if pygame.key.get_pressed()[K_LEFT] and self.falling == False: #moves the player left or right
+                self.x_veloc = -adjust_length
+        elif pygame.key.get_pressed()[K_RIGHT] and self.falling == False:
+                self.x_veloc = adjust_length
+        elif self.falling == False: #makes the player stop moving when grounded and not attempting to move
+            self.x_veloc = 0
         if pygame.key.get_pressed()[K_UP] and self.falling == False and self.just_landed == False: #allows jumping while on the ground
             self.falling = True
             self.y_veloc = -TERRAIN_Y_SIZE / 4.5
@@ -52,8 +53,9 @@ class Player:
             if self.just_landed == True: #This adds a waiting frame between possible jumps to prevent a collision issue
                 self.just_landed = False
             for terrain in self.parent.terrain_list:
-                if Rect(self.x, self.y + TERRAIN_Y_SIZE / 24, self.rect.width, self.rect.height).colliderect(terrain.rect):
-                    return
+                if terrain.ID == 0: #check if the block is collideable
+                    if Rect(self.x, self.y + TERRAIN_Y_SIZE / 24, self.rect.width, self.rect.height).colliderect(terrain.rect):
+                        return
             self.falling = True
             return
         else: #if the player is falling
@@ -64,25 +66,27 @@ class Player:
                 step = int(self.y_veloc / abs(self.y_veloc))
             for dist in range(step, int(self.y_veloc), step): #Check for collisions, and end fall if one is detected
                 for terrain in self.parent.terrain_list:
-                    if Rect(self.x, self.y + dist, self.rect.width, self.rect.height).colliderect(terrain.rect):
-                        self.falling = False
-                        self.y_veloc = 0.0
-                        self.y = self.y + dist
-                        self.just_landed = True
-                        return
+                    if terrain.ID == 0: #check if the block is collideable, ignore it otherwise
+                        if Rect(self.x, self.y + dist, self.rect.width, self.rect.height).colliderect(terrain.rect):
+                            self.falling = False
+                            self.y_veloc = 0.0
+                            self.y = self.y + dist
+                            self.just_landed = True
+                            return
         self.move(0, self.y_veloc) #Actually move the player
     def movement_check(self): #checks to see if the player is allowed to continue moving, and stops or moves them as appropriate
-        self.move((self.horiz_dir * TERRAIN_X_SIZE / PLAYER_SPEED_RATIO), 0)
+        self.move((self.x_veloc * TERRAIN_X_SIZE / PLAYER_SPEED_RATIO), 0)
         for terrain in self.parent.terrain_list:
-            if Rect(self.x + (self.horiz_dir * TERRAIN_X_SIZE / PLAYER_SPEED_RATIO), self.y - TERRAIN_Y_SIZE / 24, self.rect.width, self.rect.height).colliderect(terrain.rect):
-                self.move((-self.horiz_dir * TERRAIN_X_SIZE / PLAYER_SPEED_RATIO), 0)
-                if self.horiz_dir > 0:
-                    self.horiz_dir = self.horiz_dir - TERRAIN_X_SIZE / PLAYER_ACCEL_RATIO
-                    self.movement_check()
-                elif self.horiz_dir < 0:
-                    self.horiz_dir = self.horiz_dir + TERRAIN_X_SIZE / PLAYER_ACCEL_RATIO
-                    self.movement_check()
-                return
+            if terrain.ID == 0: #if the terrain is collideable, keep the player from walking into it
+                if Rect(self.x, self.y - TERRAIN_Y_SIZE / 24, self.rect.width, self.rect.height).colliderect(terrain.rect):
+                    self.move((-self.x_veloc * TERRAIN_X_SIZE / PLAYER_SPEED_RATIO), 0)
+                    if self.x_veloc > 0:
+                        self.x_veloc = self.x_veloc - TERRAIN_X_SIZE / PLAYER_SPEED_RATIO
+                        self.movement_check()
+                    elif self.x_veloc < 0:
+                        self.x_veloc = self.x_veloc + TERRAIN_X_SIZE / PLAYER_SPEED_RATIO
+                        self.movement_check()
+                    return
                     
 
 #This class tracks the locations and types of terrain data.
@@ -103,7 +107,7 @@ class Controller:
         self.player = Player(self, 0)
         self.mainClock = pygame.time.Clock()
         self.terrain_textures = []
-        for ID in range(1): #Add the terrain texture list to memory
+        for ID in range(2): #Add the terrain texture list to memory
             self.terrain_textures.append(self.create_terrain_texture(ID))
         self.terrain_list = []
         self.generate_terrain(1)
@@ -121,7 +125,7 @@ class Controller:
     def update_player(self): #Updates the player's position
         self.player.input_check() #Checks the player's input
         self.player.gravity() #Simulates gravity and downward collision detection
-        if self.player.horiz_dir != 0:
+        if self.player.x_veloc != 0:
             self.player.movement_check() #Horizontal movement and associated collision detection
     def create_terrain_texture(self, ID): #Generates a preloaded terrain texture for convenient access
         return pygame.transform.scale(pygame.image.load("Terrain" + str(ID) + ".png"), (TERRAIN_X_SIZE, TERRAIN_Y_SIZE))
