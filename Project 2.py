@@ -6,14 +6,14 @@ BLACK = (0, 0, 0) #Color code
 FPS = 40 #The frame rate
 SCREEN_WIDTH = 800 #The values that determine the window size
 SCREEN_HEIGHT = 600
-TERRAIN_X_SIZE = 80 #The pixel size of a standard terrain block
-TERRAIN_Y_SIZE = 60
+TERRAIN_X_SIZE = SCREEN_WIDTH / 10 #The pixel size of a standard terrain block
+TERRAIN_Y_SIZE = SCREEN_HEIGHT / 10
 PLAYER_X_SIZE = 2 * TERRAIN_X_SIZE / 3 #The pixel sizes of the player sprite
 PLAYER_Y_SIZE = 2 * TERRAIN_Y_SIZE / 3
 PLAYER_SPEED_RATIO = 35.0
 
 pygame.init()
-pygame.display.set_caption("Horse Game, Version 1")
+pygame.display.set_caption("Horse Game, Version 5.0")
 
 #This class tracks data related to the player.
 #There should only be one instance of this class.
@@ -23,11 +23,11 @@ class Player:
         #loads the player image and scales it to the required size
         self.image = pygame.transform.scale(pygame.image.load("testhorse.png"), (PLAYER_X_SIZE, PLAYER_Y_SIZE))
         self.rect = self.image.get_rect()
-        self.x = 1 * TERRAIN_X_SIZE + .5 * PLAYER_X_SIZE + .0 #starting coordinates
-        self.y = 2 * TERRAIN_Y_SIZE + .0 #the method for these will change with level generation
         self.rect.left = (SCREEN_WIDTH / 2) - (self.rect.width / 2)
         self.rect.top = (SCREEN_HEIGHT / 2) - (self.rect.height / 2)
         self.x_veloc = x_veloc
+        self.x = 0
+        self.y = 0
         self.falling = False
         self.just_landed = False
         self.y_veloc = 0.0
@@ -66,25 +66,38 @@ class Player:
                 step = int(self.y_veloc / abs(self.y_veloc))
             for dist in range(step, int(self.y_veloc), step): #Check for collisions, and end fall if one is detected
                 for terrain in self.parent.terrain_list:
-                    if terrain.ID == 0: #check if the block is collideable, ignore it otherwise
-                        if Rect(self.x, self.y, self.rect.width, self.rect.height).colliderect(terrain.rect):
+                    if Rect(self.x, self.y, self.rect.width, self.rect.height).colliderect(terrain.rect):
+                        if terrain.ID <= 9:
                             self.falling = False
                             self.y_veloc = 0.0
                             self.y = self.y - TERRAIN_Y_SIZE / 24
                             self.just_landed = True
                             return
-                        elif Rect(self.x, self.y + dist, self.rect.width, self.rect.height).colliderect(terrain.rect):
+                        elif terrain.ID <= 19:
+                            self.death()
+                            return
+                        elif terrain.ID == 20:
+                            self.victory()
+                            return
+                    elif Rect(self.x, self.y + dist, self.rect.width, self.rect.height).colliderect(terrain.rect):
+                        if terrain.ID <= 9:
                             self.falling = False
                             self.y_veloc = 0.0
                             self.y = self.y + dist
                             self.just_landed = True
                             return
+                        elif terrain.ID <= 19:
+                            self.death()
+                            return
+                        elif terrain.ID == 20:
+                            self.victory()
+                            return
         self.move(0, self.y_veloc) #Actually move the player
     def movement_check(self): #checks to see if the player is allowed to continue moving, and stops or moves them as appropriate
         self.move((self.x_veloc * TERRAIN_X_SIZE / PLAYER_SPEED_RATIO), 0)
         for terrain in self.parent.terrain_list:
-            if terrain.ID == 0: #if the terrain is collideable, keep the player from walking into it
-                if Rect(self.x, self.y - TERRAIN_Y_SIZE / 24, self.rect.width, self.rect.height).colliderect(terrain.rect):
+            if Rect(self.x, self.y - TERRAIN_Y_SIZE / 24, self.rect.width, self.rect.height).colliderect(terrain.rect):
+                if terrain.ID <= 9: #If the block is collideable, prevent collision
                     self.move((-self.x_veloc * TERRAIN_X_SIZE / PLAYER_SPEED_RATIO), 0)
                     if self.x_veloc > 0:
                         self.x_veloc = self.x_veloc - TERRAIN_X_SIZE / PLAYER_SPEED_RATIO
@@ -93,6 +106,17 @@ class Player:
                         self.x_veloc = self.x_veloc + TERRAIN_X_SIZE / PLAYER_SPEED_RATIO
                         self.movement_check()
                     return
+                elif terrain.ID <= 19: #If the block is lethal, kill player
+                    self.death()
+                    return
+                elif terrain.ID == 20: #If the block is an end point, succeed and move to next level
+                    self.victory()
+                    return
+    def death(self): #If the player dies, reset the level
+        self.parent.load_level(self.parent.level)
+    def victory(self): #If the player succeeds, load the next level
+        self.parent.level = self.parent.level + 1
+        self.parent.load_level(self.parent.level)
                     
 
 #This class tracks the locations and types of terrain data.
@@ -113,10 +137,11 @@ class Controller:
         self.player = Player(self, 0)
         self.mainClock = pygame.time.Clock()
         self.terrain_textures = []
-        for ID in range(2): #Add the terrain texture list to memory
+        for ID in range(21): #Add the terrain texture list to memory
             self.terrain_textures.append(self.create_terrain_texture(ID))
         self.terrain_list = []
-        self.generate_terrain(1)
+        self.level = 1
+        self.load_level(self.level)
     def update_all(self): #Updates all updatable entities
         self.update_player()
         self.update_window()
@@ -124,9 +149,10 @@ class Controller:
         self.window.fill(BLACK) #Clear the screen
         self.window.blit(self.player.image, self.player.rect) #Draw the player
         for terrain in self.terrain_list: #Draw each terrain object
-            draw_x = terrain.rect.left - self.player.x + self.player.rect.left
-            draw_y = terrain.rect.top - self.player.y + self.player.rect.top
-            self.window.blit(self.terrain_textures[terrain.ID], Rect(draw_x, draw_y, TERRAIN_X_SIZE, TERRAIN_Y_SIZE))
+            if terrain.ID <= 20: #Excludes script terrain from the draw procedure
+                draw_x = terrain.rect.left - self.player.x + self.player.rect.left
+                draw_y = terrain.rect.top - self.player.y + self.player.rect.top
+                self.window.blit(self.terrain_textures[terrain.ID], Rect(draw_x, draw_y, TERRAIN_X_SIZE, TERRAIN_Y_SIZE))
         pygame.display.update() #Move drawn objects to the screen
     def update_player(self): #Updates the player's position
         self.player.input_check() #Checks the player's input
@@ -134,8 +160,10 @@ class Controller:
         if self.player.x_veloc != 0:
             self.player.movement_check() #Horizontal movement and associated collision detection
     def create_terrain_texture(self, ID): #Generates a preloaded terrain texture for convenient access
-        return pygame.transform.scale(pygame.image.load("Terrain" + str(ID) + ".png"), (TERRAIN_X_SIZE, TERRAIN_Y_SIZE))
-    def generate_terrain(self, level_num): #Reads a given level and builds appropriate terrain
+        return pygame.transform.scale(pygame.image.load(r"Terrain\Terrain" + str(ID) + ".png"), (TERRAIN_X_SIZE, TERRAIN_Y_SIZE))
+    def load_level(self, level_num): #Reads a given level and builds appropriate terrain
+        print level_num
+        self.terrain_list = [] #Remove old terrain
         terrain_raw = open(r"Level Data\Level " + str(level_num) + ".txt", "r") #Access the level file
         done_cycling = False
         while not done_cycling:
@@ -145,6 +173,9 @@ class Controller:
             else:
                 terrain_obj_split = terrain_obj_raw.split() #split the line into its component numbers
                 self.terrain_list.append(Terrain(self, int(terrain_obj_split[0]), int(terrain_obj_split[1]), int(terrain_obj_split[2]))) #use the split numbers to create a terrain object
+                if int(terrain_obj_split[0]) == 21: #positions the player at a "start" terrain block
+                    self.player.x = int(terrain_obj_split[1]) * TERRAIN_X_SIZE + .5 * PLAYER_X_SIZE
+                    self.player.y = int(terrain_obj_split[2]) * TERRAIN_Y_SIZE
     def run(self): #The main loop
         STOP = False
         while not STOP: 
