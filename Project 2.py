@@ -53,7 +53,7 @@ class Player:
             if self.just_landed == True: #This adds a waiting frame between possible jumps to prevent a collision issue
                 self.just_landed = False
             for terrain in self.parent.terrain_list:
-                if terrain.ID == 0: #check if the block is collideable
+                if terrain.ID <= 9: #check if the block is collideable
                     if Rect(self.x, self.y + TERRAIN_Y_SIZE / 24, self.rect.width, self.rect.height).colliderect(terrain.rect):
                         return
             self.falling = True
@@ -150,9 +150,10 @@ class Controller:
         self.window.blit(self.player.image, self.player.rect) #Draw the player
         for terrain in self.terrain_list: #Draw each terrain object
             if terrain.ID <= 20: #Excludes script terrain from the draw procedure
-                draw_x = terrain.rect.left - self.player.x + self.player.rect.left
-                draw_y = terrain.rect.top - self.player.y + self.player.rect.top
-                self.window.blit(self.terrain_textures[terrain.ID], Rect(draw_x, draw_y, TERRAIN_X_SIZE, TERRAIN_Y_SIZE))
+                    draw_x = terrain.rect.left - self.player.x + self.player.rect.left #place the terrain based on the player's locatioin
+                    draw_y = terrain.rect.top - self.player.y + self.player.rect.top
+                    if draw_x <= SCREEN_WIDTH and draw_x >= -TERRAIN_X_SIZE and draw_y <= SCREEN_HEIGHT and draw_y >= -TERRAIN_Y_SIZE:
+                        self.window.blit(self.terrain_textures[terrain.ID], Rect(draw_x, draw_y, TERRAIN_X_SIZE, TERRAIN_Y_SIZE + 1))
         pygame.display.update() #Move drawn objects to the screen
     def update_player(self): #Updates the player's position
         self.player.input_check() #Checks the player's input
@@ -160,9 +161,8 @@ class Controller:
         if self.player.x_veloc != 0:
             self.player.movement_check() #Horizontal movement and associated collision detection
     def create_terrain_texture(self, ID): #Generates a preloaded terrain texture for convenient access
-        return pygame.transform.scale(pygame.image.load(r"Terrain\Terrain" + str(ID) + ".png"), (TERRAIN_X_SIZE, TERRAIN_Y_SIZE))
+        return pygame.transform.scale(pygame.image.load(r"Terrain\Terrain" + str(ID) + ".png"), (TERRAIN_X_SIZE, TERRAIN_Y_SIZE + 1)) #+1 prevents a horizontal tearing issue
     def load_level(self, level_num): #Reads a given level and builds appropriate terrain
-        print level_num
         self.terrain_list = [] #Remove old terrain
         terrain_raw = open(r"Level Data\Level " + str(level_num) + ".txt", "r") #Access the level file
         done_cycling = False
