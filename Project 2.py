@@ -74,10 +74,10 @@ class Player:
                             self.just_landed = True
                             return
                         elif terrain.ID <= 19:
-                            self.death()
+                            self.parent.death()
                             return
                         elif terrain.ID == 20:
-                            self.victory()
+                            self.parent.victory()
                             return
                     elif Rect(self.x, self.y + dist, self.rect.width, self.rect.height).colliderect(terrain.rect):
                         if terrain.ID <= 9:
@@ -87,10 +87,10 @@ class Player:
                             self.just_landed = True
                             return
                         elif terrain.ID <= 19:
-                            self.death()
+                            self.parent.death()
                             return
                         elif terrain.ID == 20:
-                            self.victory()
+                            self.parent.victory()
                             return
         self.move(0, self.y_veloc) #Actually move the player
     def movement_check(self): #checks to see if the player is allowed to continue moving, and stops or moves them as appropriate
@@ -107,17 +107,11 @@ class Player:
                         self.movement_check()
                     return
                 elif terrain.ID <= 19: #If the block is lethal, kill player
-                    self.death()
+                    self.parent.death()
                     return
                 elif terrain.ID == 20: #If the block is an end point, succeed and move to next level
-                    self.victory()
+                    self.parent.victory()
                     return
-    def death(self): #If the player dies, reset the level
-        self.parent.load_level(self.parent.level)
-    def victory(self): #If the player succeeds, load the next level
-        self.parent.level = self.parent.level + 1
-        self.parent.load_level(self.parent.level)
-                    
 
 #This class tracks the locations and types of terrain data.
 #There should be as many instances as dictated by the level.
@@ -142,10 +136,15 @@ class Controller:
         self.terrain_list = []
         self.level = 1
         self.load_level(self.level)
+        self.messages = pygame.transform.scale(pygame.image.load(r"anim\Victory.png"), (SCREEN_WIDTH / 2, SCREEN_HEIGHT / 8))
+        self.messages_rect = self.messages.get_rect()
     def update_all(self): #Updates all updatable entities
         self.update_player()
         self.update_window()
     def update_window(self): #Updates the display
+        self.draw_stuff()
+        pygame.display.update() #Move drawn objects to the screen
+    def draw_stuff(self):
         self.window.fill(BLACK) #Clear the screen
         self.window.blit(self.player.image, self.player.rect) #Draw the player
         for terrain in self.terrain_list: #Draw each terrain object
@@ -153,8 +152,7 @@ class Controller:
                     draw_x = terrain.rect.left - self.player.x + self.player.rect.left #place the terrain based on the player's locatioin
                     draw_y = terrain.rect.top - self.player.y + self.player.rect.top
                     if draw_x <= SCREEN_WIDTH and draw_x >= -TERRAIN_X_SIZE and draw_y <= SCREEN_HEIGHT and draw_y >= -TERRAIN_Y_SIZE:
-                        self.window.blit(self.terrain_textures[terrain.ID], Rect(draw_x, draw_y, TERRAIN_X_SIZE, TERRAIN_Y_SIZE + 1))
-        pygame.display.update() #Move drawn objects to the screen
+                        self.window.blit(self.terrain_textures[terrain.ID], Rect(draw_x, draw_y, TERRAIN_X_SIZE, TERRAIN_Y_SIZE + 1))        
     def update_player(self): #Updates the player's position
         self.player.input_check() #Checks the player's input
         self.player.gravity() #Simulates gravity and downward collision detection
@@ -176,6 +174,20 @@ class Controller:
                 if int(terrain_obj_split[0]) == 21: #positions the player at a "start" terrain block
                     self.player.x = int(terrain_obj_split[1]) * TERRAIN_X_SIZE + .5 * PLAYER_X_SIZE
                     self.player.y = int(terrain_obj_split[2]) * TERRAIN_Y_SIZE
+    def death(self): #If the player dies, reset the level
+        for iterate in range(20, 0, -1): #this loop is the death fade-from-white effect
+            self.window.fill(BLACK)
+            pygame.display.update()
+            self.mainClock.tick(FPS)
+        self.load_level(self.level)
+    def victory(self): #If the player succeeds, load the next level
+        for iterate in range(75): #this loop is the victory animation
+            self.draw_stuff()
+            self.window.blit(self.messages, Rect(SCREEN_WIDTH / 4, 7 * SCREEN_HEIGHT / 16, 0, 0), Rect(0, 0, iterate * self.messages_rect.width / 45, self.messages_rect.height))
+            pygame.display.update()
+            self.mainClock.tick(FPS)
+        self.level = self.level + 1
+        self.load_level(self.level)
     def run(self): #The main loop
         STOP = False
         while not STOP: 
