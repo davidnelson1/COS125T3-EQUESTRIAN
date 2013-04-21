@@ -11,6 +11,9 @@ TERRAIN_Y_SIZE = SCREEN_HEIGHT / 10
 PLAYER_X_SIZE = 2 * TERRAIN_X_SIZE / 3 #The pixel sizes of the player sprite
 PLAYER_Y_SIZE = 2 * TERRAIN_Y_SIZE / 3
 PLAYER_SPEED_RATIO = 35.0
+ENEMY_X_SIZE = [TERRAIN_X_SIZE / 2, TERRAIN_X_SIZE / 2, TERRAIN_X_SIZE / 3] #The pixel sizes of the enemy sprites
+ENEMY_Y_SIZE = [TERRAIN_Y_SIZE / 4, TERRAIN_Y_SIZE, TERRAIN_Y_SIZE / 2]
+ENEMY_SPEED_RATIO = [10.0, 40.0, 50.0] #The number of frames it takes each enemy to travel 1 block
 
 pygame.init()
 pygame.display.set_caption("Horse Game, Version 5.0")
@@ -112,6 +115,93 @@ class Player:
                 elif terrain.ID == 20: #If the block is an end point, succeed and move to next level
                     self.parent.victory()
                     return
+        for enemy in self.parent.enemy_list: #Check for enemy collisions
+            if Rect(self.x, self.y, self.rect.width, self.rect.height).colliderect(enemy.rect):
+                self.parent.death()
+
+#Tracks the enemy behavior--is largely based on the Player class.
+#Spawned in as necessary by script terrain.
+class Enemy:
+    def __init__(self, parent, enemy_ID, x_coord, y_coord):
+        self.parent = parent
+        self.ID = enemy_ID
+        self.rect = Rect(x_coord * TERRAIN_X_SIZE, y_coord * TERRAIN_Y_SIZE, ENEMY_X_SIZE[self.ID], ENEMY_Y_SIZE[self.ID])
+        self.x = x_coord * TERRAIN_X_SIZE
+        self.y = y_coord * TERRAIN_Y_SIZE
+        self.x_veloc = 0
+        self.y_veloc = 0
+        self.falling = False
+        self.just_landed = False
+    def move(self, xm, ym):
+        self.x = self.x + xm
+        self.y = self.y + ym
+        self.rect.left = self.x
+        self.rect.top = self.y
+    def gravity(self): #checks if the enemy has collided with the terrain
+        if self.falling == False: #if the enemy is not falling and is not standing on a block, begin falling
+            if self.just_landed == True: #This adds a waiting frame between possible jumps to prevent a collision issue
+                self.just_landed = False
+            for terrain in self.parent.terrain_list:
+                if terrain.ID <= 9: #check if the block is collideable
+                    if Rect(self.rect.left, self.rect.top + TERRAIN_Y_SIZE / 24, self.rect.width, self.rect.height).colliderect(terrain.rect):
+                        return
+            self.falling = True
+            return
+        else: #if the enemy is falling
+            self.y_veloc = self.y_veloc + TERRAIN_Y_SIZE / 60.0 #accelerate downward
+            if int(self.y_veloc) == 0:
+                step = 1
+            else:
+                step = int(self.y_veloc / abs(self.y_veloc))
+            for dist in range(step, int(self.y_veloc), step): #Check for collisions, and end fall if one is detected
+                for terrain in self.parent.terrain_list:
+                    if self.rect.colliderect(terrain.rect):
+                        if terrain.ID <= 9:
+                            self.falling = False
+                            self.y_veloc = 0.0
+                            self.rect.top = self.rect.top - TERRAIN_Y_SIZE / 24
+                            self.just_landed = True
+                            return
+                        elif terrain.ID <= 19:
+                            self.parent.enemy_list.remove(self)
+                            return
+                    elif Rect(self.rect.left, self.rect.top + dist, self.rect.width, self.rect.height).colliderect(terrain.rect):
+                        if terrain.ID <= 9:
+                            self.falling = False
+                            self.y_veloc = 0.0
+                            self.rect.top = self.rect.top + dist
+                            self.just_landed = True
+                            return
+                        elif terrain.ID <= 19:
+                            self.parent.enemy_list.remove(self)
+                            return
+        self.move(0, self.y_veloc) #Actually move the enemy
+    def AI(self):
+        if self.ID == 0: #Perform snake behavior
+            if not self.parent.player.falling and not self.falling: #Chase the player while both are grounded
+                if self.parent.player.x <= self.rect.left + SCREEN_WIDTH / 2 + self.rect.width and self.rect.left <= self.parent.player.x:
+                    if self.parent.player.x - self.x < TERRAIN_X_SIZE / ENEMY_SPEED_RATIO[self.ID]:
+                        self.x_veloc = (self.parent.player.x - self.x) / (TERRAIN_X_SIZE / ENEMY_SPEED_RATIO[self.ID])
+                    else:
+                        self.x_veloc = 1
+                elif self.parent.player.x >= self.rect.left - SCREEN_WIDTH / 2 - self.parent.player.rect.width and self.rect.left >= self.parent.player.x:
+                    if self.x - self.parent.player.x < TERRAIN_X_SIZE / ENEMY_SPEED_RATIO[self.ID]:
+                        self.x_veloc = (self.parent.player.x - self.x) / (TERRAIN_X_SIZE / ENEMY_SPEED_RATIO[self.ID])
+                    else:
+                        self.x_veloc = -1
+                else:
+                    self.x_veloc = 0
+    def movement_check(self): #checks to see if the enemy is allowed to continue moving, and stops or moves them as appropriate
+        self.move((self.x_veloc * TERRAIN_X_SIZE / ENEMY_SPEED_RATIO[self.ID]), 0)
+        for terrain in self.parent.terrain_list:
+            if Rect(self.rect.left, self.rect.top - TERRAIN_Y_SIZE / 24, self.rect.width, self.rect.height).colliderect(terrain.rect):
+                if terrain.ID <= 9: #If the block is collideable, prevent collision
+                    self.move((-self.x_veloc * TERRAIN_X_SIZE / ENEMY_SPEED_RATIO[self.ID]), 0)
+                    self.x_veloc = 0
+                    return
+                elif terrain.ID <= 19: #If the block is lethal, kill enemy
+                    self.parent.enemy_list.remove(self)
+                    return
 
 #This class tracks the locations and types of terrain data.
 #There should be as many instances as dictated by the level.
@@ -133,35 +223,52 @@ class Controller:
         self.terrain_textures = []
         for ID in range(21): #Add the terrain texture list to memory
             self.terrain_textures.append(self.create_terrain_texture(ID))
+        self.enemy_textures = []
+        for ID in range(3):
+            self.enemy_textures.append(self.create_enemy_texture(ID))
         self.terrain_list = []
+        self.enemy_list = []
         self.level = 1
         self.load_level(self.level)
         self.messages = pygame.transform.scale(pygame.image.load(r"anim\Victory.png"), (SCREEN_WIDTH / 2, SCREEN_HEIGHT / 8))
         self.messages_rect = self.messages.get_rect()
     def update_all(self): #Updates all updatable entities
         self.update_player()
+        self.update_enemies()
         self.update_window()
     def update_window(self): #Updates the display
         self.draw_stuff()
         pygame.display.update() #Move drawn objects to the screen
+    def update_enemies(self):
+        for enemy in self.enemy_list:
+            enemy.gravity()
+            enemy.AI()
+            enemy.movement_check()
     def draw_stuff(self):
         self.window.fill(BLACK) #Clear the screen
         self.window.blit(self.player.image, self.player.rect) #Draw the player
+        for enemy in self.enemy_list: #Draw each enemy
+            draw_x = enemy.rect.left - self.player.x + self.player.rect.left
+            draw_y = enemy.rect.top - self.player.y + self.player.rect.top
+            if draw_x <= SCREEN_WIDTH and draw_x >= -TERRAIN_X_SIZE and draw_y <= SCREEN_HEIGHT and draw_y >= -TERRAIN_Y_SIZE:
+                self.window.blit(self.enemy_textures[enemy.ID], Rect(draw_x, draw_y, ENEMY_X_SIZE[enemy.ID], ENEMY_Y_SIZE[enemy.ID]))
         for terrain in self.terrain_list: #Draw each terrain object
             if terrain.ID <= 20: #Excludes script terrain from the draw procedure
                     draw_x = terrain.rect.left - self.player.x + self.player.rect.left #place the terrain based on the player's locatioin
                     draw_y = terrain.rect.top - self.player.y + self.player.rect.top
                     if draw_x <= SCREEN_WIDTH and draw_x >= -TERRAIN_X_SIZE and draw_y <= SCREEN_HEIGHT and draw_y >= -TERRAIN_Y_SIZE:
-                        self.window.blit(self.terrain_textures[terrain.ID], Rect(draw_x, draw_y, TERRAIN_X_SIZE, TERRAIN_Y_SIZE + 1))        
+                        self.window.blit(self.terrain_textures[terrain.ID], Rect(draw_x, draw_y, TERRAIN_X_SIZE, TERRAIN_Y_SIZE + 1))
     def update_player(self): #Updates the player's position
         self.player.input_check() #Checks the player's input
         self.player.gravity() #Simulates gravity and downward collision detection
-        if self.player.x_veloc != 0:
-            self.player.movement_check() #Horizontal movement and associated collision detection
+        self.player.movement_check() #Horizontal movement and associated collision detection
     def create_terrain_texture(self, ID): #Generates a preloaded terrain texture for convenient access
         return pygame.transform.scale(pygame.image.load(r"Terrain\Terrain" + str(ID) + ".png"), (TERRAIN_X_SIZE, TERRAIN_Y_SIZE + 1)) #+1 prevents a horizontal tearing issue
+    def create_enemy_texture(self, ID): #Generates a preloaded enemy texture for convenient access
+        return pygame.transform.scale(pygame.image.load(r"anim\enemy" + str(ID) + ".png"), (ENEMY_X_SIZE[ID], ENEMY_Y_SIZE[ID])) #+1 prevents a horizontal tearing issue
     def load_level(self, level_num): #Reads a given level and builds appropriate terrain
         self.terrain_list = [] #Remove old terrain
+        self.enemy_list = [] #Remove old enemies
         terrain_raw = open(r"Level Data\Level " + str(level_num) + ".txt", "r") #Access the level file
         done_cycling = False
         while not done_cycling:
@@ -174,6 +281,8 @@ class Controller:
                 if int(terrain_obj_split[0]) == 21: #positions the player at a "start" terrain block
                     self.player.x = int(terrain_obj_split[1]) * TERRAIN_X_SIZE + .5 * PLAYER_X_SIZE
                     self.player.y = int(terrain_obj_split[2]) * TERRAIN_Y_SIZE
+                elif int(terrain_obj_split[0]) >= 22 and int(terrain_obj_split[0]) <= 24:
+                    self.enemy_list.append(Enemy(self, int(terrain_obj_split[0]) - 22, int(terrain_obj_split[1]), int(terrain_obj_split[2])))
     def death(self): #If the player dies, reset the level
         for iterate in range(20, 0, -1): #this loop is the death fade-from-white effect
             self.window.fill(BLACK)
