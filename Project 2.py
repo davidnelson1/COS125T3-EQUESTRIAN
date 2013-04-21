@@ -37,6 +37,9 @@ class Player:
     def move(self, xm, ym): #adjusts the player's position
         self.x = self.x + xm
         self.y = self.y + ym
+        self.parent.parallax[0] = self.parent.parallax[0] - xm / 5
+        if self.parent.parallax[0] <= -2 * SCREEN_WIDTH:
+            self.parent.parallax[0] = self.parent.parallax[0] + 2 * SCREEN_WIDTH
     def input_check(self): #adjusts player movement direction
         if pygame.key.get_pressed()[K_LSHIFT]: #increases the player's movement speed if shift is held
             adjust_length = 2
@@ -240,6 +243,8 @@ class Controller:
             self.enemy_textures.append(self.create_enemy_texture(ID))
         self.terrain_list = []
         self.enemy_list = []
+        self.background_texture = pygame.transform.scale(pygame.image.load(r"anim\Background.png"), (SCREEN_WIDTH * 2, SCREEN_HEIGHT * 2))
+        self.parallax = [-SCREEN_WIDTH, -SCREEN_HEIGHT / 3]
         self.level = 1
         self.load_level(self.level)
         self.messages = pygame.transform.scale(pygame.image.load(r"anim\Victory.png"), (SCREEN_WIDTH / 2, SCREEN_HEIGHT / 8))
@@ -262,7 +267,8 @@ class Controller:
             enemy.AI()
             enemy.movement_check()
     def draw_stuff(self):
-        self.window.fill(BLACK) #Clear the screen
+        self.window.blit(self.background_texture, Rect(self.parallax[0], self.parallax[1], 0, 0)) #Draw the background
+        self.window.blit(self.background_texture, Rect(self.parallax[0] + 2 * SCREEN_WIDTH, self.parallax[1], 0, 0))
         for terrain in self.terrain_list: #Draw each terrain object
             if terrain.ID <= 21: #Excludes script terrain from the draw procedure
                     draw_x = terrain.rect.left - self.player.x + self.player.rect.left #place the terrain based on the player's locatioin

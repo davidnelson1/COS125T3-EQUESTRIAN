@@ -1,0 +1,11 @@
+0 - Grass
+1 - Dirt
+2...9 - Undetermined Solid Terrain
+10 - Spikes
+11...19 - Undetermined Lethal Terrain
+20 - End Point
+21 - Bear Cave
+22 - Start Point
+23 - Snake
+24 - Bear
+25 - Wolf
