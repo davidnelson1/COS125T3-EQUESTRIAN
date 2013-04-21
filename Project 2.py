@@ -10,7 +10,7 @@ TERRAIN_X_SIZE = SCREEN_WIDTH / 10 #The pixel size of a standard terrain block
 TERRAIN_Y_SIZE = SCREEN_HEIGHT / 10
 PLAYER_X_SIZE = 2 * TERRAIN_X_SIZE / 3 #The pixel sizes of the player sprite
 PLAYER_Y_SIZE = 2 * TERRAIN_Y_SIZE / 3
-PLAYER_SPEED_RATIO = 15.0
+PLAYER_SPEED_RATIO = 15.0 #The number of frames it takes the player to travel 1 block
 ENEMY_X_SIZE = [TERRAIN_X_SIZE / 2, TERRAIN_X_SIZE / 2, 2 * TERRAIN_X_SIZE / 3] #The pixel sizes of the enemy sprites
 ENEMY_Y_SIZE = [TERRAIN_Y_SIZE / 4, 2 * TERRAIN_Y_SIZE / 3, 2 * TERRAIN_Y_SIZE / 3]
 ENEMY_SPEED_RATIO = [10.0, 30.0, 20.0] #The number of frames it takes each enemy to travel 1 block
@@ -42,9 +42,9 @@ class Player:
             adjust_length = 2
         else:
             adjust_length = 1
-        if pygame.key.get_pressed()[K_LEFT] and self.falling == False: #moves the player left or right
+        if pygame.key.get_pressed()[K_LEFT]: #moves the player left or right
                 self.x_veloc = -adjust_length
-        elif pygame.key.get_pressed()[K_RIGHT] and self.falling == False:
+        elif pygame.key.get_pressed()[K_RIGHT]:
                 self.x_veloc = adjust_length
         elif self.falling == False: #makes the player stop moving when grounded and not attempting to move
             self.x_veloc = 0
