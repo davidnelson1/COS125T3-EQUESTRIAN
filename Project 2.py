@@ -11,9 +11,9 @@ TERRAIN_Y_SIZE = SCREEN_HEIGHT / 10
 PLAYER_X_SIZE = 2 * TERRAIN_X_SIZE / 3 #The pixel sizes of the player sprite
 PLAYER_Y_SIZE = 2 * TERRAIN_Y_SIZE / 3
 PLAYER_SPEED_RATIO = 15.0
-ENEMY_X_SIZE = [TERRAIN_X_SIZE / 2, TERRAIN_X_SIZE / 2, TERRAIN_X_SIZE / 3] #The pixel sizes of the enemy sprites
-ENEMY_Y_SIZE = [TERRAIN_Y_SIZE / 4, 2 * TERRAIN_Y_SIZE / 3, TERRAIN_Y_SIZE / 2]
-ENEMY_SPEED_RATIO = [10.0, 30.0, 50.0] #The number of frames it takes each enemy to travel 1 block
+ENEMY_X_SIZE = [TERRAIN_X_SIZE / 2, TERRAIN_X_SIZE / 2, 2 * TERRAIN_X_SIZE / 3] #The pixel sizes of the enemy sprites
+ENEMY_Y_SIZE = [TERRAIN_Y_SIZE / 4, 2 * TERRAIN_Y_SIZE / 3, 2 * TERRAIN_Y_SIZE / 3]
+ENEMY_SPEED_RATIO = [10.0, 30.0, 20.0] #The number of frames it takes each enemy to travel 1 block
 
 pygame.init()
 pygame.display.set_caption("Horse Game, Version 5.0")
@@ -132,7 +132,8 @@ class Enemy:
         self.y_veloc = 0
         self.falling = False
         self.just_landed = False
-        self.next_direction = -1 #This is only used by bears
+        self.next_direction = -1 #This is only used by bears and wolves
+        self.dir_swapped = True #This is used by wolves only
     def move(self, xm, ym):
         self.x = self.x + xm
         self.y = self.y + ym
@@ -156,21 +157,11 @@ class Enemy:
                 step = int(self.y_veloc / abs(self.y_veloc))
             for dist in range(step, int(self.y_veloc), step): #Check for collisions, and end fall if one is detected
                 for terrain in self.parent.terrain_list:
-                    if self.rect.colliderect(terrain.rect):
+                    if Rect(self.rect.left, self.rect.top + dist, self.rect.width, self.rect.height).colliderect(terrain.rect):
                         if terrain.ID <= 9:
                             self.falling = False
                             self.y_veloc = 0.0
-                            self.rect.top = self.rect.top - TERRAIN_Y_SIZE / 24
-                            self.just_landed = True
-                            return
-                        elif terrain.ID <= 19:
-                            self.parent.enemy_list.remove(self)
-                            return
-                    elif Rect(self.rect.left, self.rect.top + dist, self.rect.width, self.rect.height).colliderect(terrain.rect):
-                        if terrain.ID <= 9:
-                            self.falling = False
-                            self.y_veloc = 0.0
-                            self.rect.top = self.rect.top + dist
+                            self.y = self.y + dist
                             self.just_landed = True
                             return
                         elif terrain.ID <= 19:
@@ -197,6 +188,20 @@ class Enemy:
                 if self.x_veloc == 0:
                     self.x_veloc = self.next_direction
                     self.next_direction = -self.next_direction
+        elif self.ID == 2: #Perform wolf behavior
+            if not self.falling:
+                if self.parent.frame_tick % 80 == 0:
+                    self.x_veloc = self.next_direction
+                    self.y_veloc = -TERRAIN_Y_SIZE / 4.5
+                    self.falling = True
+                    self.dir_swapped = False
+                else:
+                    self.x_veloc = 0
+            else:
+                if self.x_veloc == 0 and self.falling == True and self.dir_swapped == False:
+                    self.next_direction = -self.next_direction
+                    self.dir_swapped = True
+                    
     def movement_check(self): #checks to see if the enemy is allowed to continue moving, and stops or moves them as appropriate
         self.move((self.x_veloc * TERRAIN_X_SIZE / ENEMY_SPEED_RATIO[self.ID]), 0)
         for terrain in self.parent.terrain_list:
