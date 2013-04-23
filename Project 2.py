@@ -16,7 +16,7 @@ ENEMY_Y_SIZE = [TERRAIN_Y_SIZE / 4, 2 * TERRAIN_Y_SIZE / 3, 2 * TERRAIN_Y_SIZE /
 ENEMY_SPEED_RATIO = [10.0, 30.0, 20.0] #The number of frames it takes each enemy to travel 1 block
 
 pygame.init()
-pygame.display.set_caption("Horse Game, Version 5.0")
+pygame.display.set_caption("Horse Game, Version 7.1")
 
 #This class tracks data related to the player.
 #There should only be one instance of this class.
@@ -59,7 +59,7 @@ class Player:
             if self.just_landed == True: #This adds a waiting frame between possible jumps to prevent a collision issue
                 self.just_landed = False
             for terrain in self.parent.terrain_list:
-                if terrain.ID <= 9: #check if the block is collideable
+                if terrain.ID <= 9 and nearby(self, terrain): #check if the block is collideable
                     if Rect(self.x, self.y + TERRAIN_Y_SIZE / 24, self.rect.width, self.rect.height).colliderect(terrain.rect):
                         return
             self.falling = True
@@ -72,52 +72,54 @@ class Player:
                 step = int(self.y_veloc / abs(self.y_veloc))
             for dist in range(step, int(self.y_veloc), step): #Check for collisions, and end fall if one is detected
                 for terrain in self.parent.terrain_list:
-                    if Rect(self.x, self.y, self.rect.width, self.rect.height).colliderect(terrain.rect):
-                        if terrain.ID <= 9:
-                            self.falling = False
-                            self.y_veloc = 0.0
-                            self.y = self.y - TERRAIN_Y_SIZE / 24
-                            self.just_landed = True
-                            return
-                        elif terrain.ID <= 19:
-                            self.parent.death()
-                            return
-                        elif terrain.ID == 20:
-                            self.parent.victory()
-                            return
-                    elif Rect(self.x, self.y + dist, self.rect.width, self.rect.height).colliderect(terrain.rect):
-                        if terrain.ID <= 9:
-                            self.falling = False
-                            self.y_veloc = 0.0
-                            self.y = self.y + dist
-                            self.just_landed = True
-                            return
-                        elif terrain.ID <= 19:
-                            self.parent.death()
-                            return
-                        elif terrain.ID == 20:
-                            self.parent.victory()
-                            return
+                    if nearby(self, terrain):
+                        if Rect(self.x, self.y, self.rect.width, self.rect.height).colliderect(terrain.rect) and self.y > self.rect.top:
+                            if terrain.ID <= 9:
+                                self.falling = False
+                                self.y_veloc = 0.0
+                                self.y = self.y - TERRAIN_Y_SIZE / 24
+                                self.just_landed = True
+                                return
+                            elif terrain.ID <= 19:
+                                self.parent.death()
+                                return
+                            elif terrain.ID == 20:
+                                self.parent.victory()
+                                return
+                        elif Rect(self.x, self.y + dist, self.rect.width, self.rect.height).colliderect(terrain.rect):
+                            if terrain.ID <= 9:
+                                self.falling = False
+                                self.y_veloc = 0.0
+                                self.y = self.y + dist
+                                self.just_landed = True
+                                return
+                            elif terrain.ID <= 19:
+                                self.parent.death()
+                                return
+                            elif terrain.ID == 20:
+                                self.parent.victory()
+                                return
         self.move(0, self.y_veloc) #Actually move the player
     def movement_check(self): #checks to see if the player is allowed to continue moving, and stops or moves them as appropriate
         self.move((self.x_veloc * TERRAIN_X_SIZE / PLAYER_SPEED_RATIO), 0)
         for terrain in self.parent.terrain_list:
-            if Rect(self.x, self.y - TERRAIN_Y_SIZE / 24, self.rect.width, self.rect.height).colliderect(terrain.rect):
-                if terrain.ID <= 9: #If the block is collideable, prevent collision
-                    self.move((-self.x_veloc * TERRAIN_X_SIZE / PLAYER_SPEED_RATIO), 0)
-                    if self.x_veloc > 0:
-                        self.x_veloc = self.x_veloc - 1
-                        self.movement_check()
-                    elif self.x_veloc < 0:
-                        self.x_veloc = self.x_veloc + 1
-                        self.movement_check()
-                    return
-                elif terrain.ID <= 19: #If the block is lethal, kill player
-                    self.parent.death()
-                    return
-                elif terrain.ID == 20: #If the block is an end point, succeed and move to next level
-                    self.parent.victory()
-                    return
+            if nearby(self, terrain):
+                if Rect(self.x, self.y - TERRAIN_Y_SIZE / 24, self.rect.width, self.rect.height).colliderect(terrain.rect):
+                    if terrain.ID <= 9: #If the block is collideable, prevent collision
+                        self.move((-self.x_veloc * TERRAIN_X_SIZE / PLAYER_SPEED_RATIO), 0)
+                        if self.x_veloc > 0:
+                            self.x_veloc = self.x_veloc - 1
+                            self.movement_check()
+                        elif self.x_veloc < 0:
+                            self.x_veloc = self.x_veloc + 1
+                            self.movement_check()
+                        return
+                    elif terrain.ID <= 19: #If the block is lethal, kill player
+                        self.parent.death()
+                        return
+                    elif terrain.ID == 20: #If the block is an end point, succeed and move to next level
+                        self.parent.victory()
+                        return
         for enemy in self.parent.enemy_list: #Check for enemy collisions
             if Rect(self.x, self.y, self.rect.width, self.rect.height).colliderect(enemy.rect):
                 self.parent.death()
@@ -330,6 +332,14 @@ class Controller:
                 if event.type == QUIT:
                     STOP = True
                     pygame.quit()
+
+def nearby(player, terrain):
+    """
+    Determines if a player object and a terrain object are in a certain range of each other. Returns True if so, and False otherwise.
+    """
+    if ((player.x - terrain.rect.left) * (player.x - terrain.rect.left) + (player.y - terrain.rect.top) * (player.y - terrain.rect.top)) / TERRAIN_X_SIZE <= TERRAIN_X_SIZE + TERRAIN_Y_SIZE:
+        return True
+    return False
 
 bwin = Controller(SCREEN_WIDTH, SCREEN_HEIGHT)
 bwin.run()
