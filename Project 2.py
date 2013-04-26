@@ -11,9 +11,9 @@ TERRAIN_Y_SIZE = SCREEN_HEIGHT / 10
 PLAYER_X_SIZE = 2 * TERRAIN_X_SIZE / 3 #The pixel sizes of the player sprite
 PLAYER_Y_SIZE = 2 * TERRAIN_Y_SIZE / 3
 PLAYER_SPEED_RATIO = 15.0 #The number of frames it takes the player to travel 1 block
-ENEMY_X_SIZE = [TERRAIN_X_SIZE / 2, TERRAIN_X_SIZE / 2, 2 * TERRAIN_X_SIZE / 3] #The pixel sizes of the enemy sprites
-ENEMY_Y_SIZE = [TERRAIN_Y_SIZE / 4, 2 * TERRAIN_Y_SIZE / 3, 2 * TERRAIN_Y_SIZE / 3]
-ENEMY_SPEED_RATIO = [10.0, 30.0, 20.0] #The number of frames it takes each enemy to travel 1 block
+ENEMY_X_SIZE = [TERRAIN_X_SIZE / 2, 2 * TERRAIN_X_SIZE / 3, 2 * TERRAIN_X_SIZE / 3] #The pixel sizes of the enemy sprites
+ENEMY_Y_SIZE = [TERRAIN_Y_SIZE / 2, TERRAIN_Y_SIZE / 2, 2 * TERRAIN_Y_SIZE / 3]
+ENEMY_SPEED_RATIO = [10.0, 30.0, 10.0] #The number of frames it takes each enemy to travel 1 block
 
 pygame.init()
 pygame.display.set_caption("Horse Game, Version 7.1")
@@ -23,23 +23,58 @@ pygame.display.set_caption("Horse Game, Version 7.1")
 class Player:
     def __init__(self, parent, x_veloc):
         self.parent = parent
-        #loads the player image and scales it to the required size
-        self.image = pygame.transform.scale(pygame.image.load("testhorse.png"), (PLAYER_X_SIZE, PLAYER_Y_SIZE))
-        self.rect = self.image.get_rect()
-        self.rect.left = (SCREEN_WIDTH / 2) - (self.rect.width / 2)
+        #loads the player animation and scales it to the required size
+        self.image = []
+        for anim_frame in range(12):
+            self.image.append(pygame.transform.scale(pygame.image.load("anim\player" + str(anim_frame) + ".png"), (PLAYER_X_SIZE, PLAYER_Y_SIZE)))
+        self.rect = self.image[0].get_rect() #obtain a box around the player
+        self.rect.left = (SCREEN_WIDTH / 2) - (self.rect.width / 2) #place the player in the center of the screen
         self.rect.top = (SCREEN_HEIGHT / 2) - (self.rect.height / 2)
-        self.x_veloc = x_veloc
-        self.x = 0
-        self.y = 0
-        self.falling = False
-        self.just_landed = False
+        self.x_veloc = x_veloc #initialize player velocities
         self.y_veloc = 0.0
+        self.x = 0 #initialize player's "actual" position and animation value
+        self.y = 0
+        self.anim_frame = 3
+        self.falling = False #initialize gravity-related variables
+        self.just_landed = False
     def move(self, xm, ym): #adjusts the player's position
         self.x = self.x + xm
         self.y = self.y + ym
         self.parent.parallax[0] = self.parent.parallax[0] - xm / 5
         if self.parent.parallax[0] <= -2 * SCREEN_WIDTH:
             self.parent.parallax[0] = self.parent.parallax[0] + 2 * SCREEN_WIDTH
+        elif self.parent.parallax[0] >= 0:
+            self.parent.parallax[0] = self.parent.parallax[0] - 2 * SCREEN_WIDTH
+    def determine_animation_frame(self):
+        if self.falling == True:
+            if self.x_veloc < 0:
+                self.anim_frame = 0
+            elif self.x_veloc > 0:
+                self.anim_frame = 1
+        else:
+            if self.x_veloc < 0:
+                if self.anim_frame >= 4 and self.anim_frame <= 6:
+                    if self.parent.frame_tick % (10 / abs(self.x_veloc)) == 0:
+                        self.anim_frame = self.anim_frame + 1
+                elif self.anim_frame == 7:
+                    if self.parent.frame_tick % (10 / abs(self.x_veloc)) == 0:
+                        self.anim_frame = self.anim_frame - 3
+                else:
+                    self.anim_frame = 4
+            elif self.x_veloc > 0:
+                if self.anim_frame >= 8 and self.anim_frame <= 10:
+                    if self.parent.frame_tick % (10 / abs(self.x_veloc)) == 0:
+                        self.anim_frame = self.anim_frame + 1
+                elif self.anim_frame == 11:
+                    if self.parent.frame_tick % (10 / abs(self.x_veloc)) == 0:
+                        self.anim_frame = self.anim_frame - 3
+                else:
+                    self.anim_frame = 8
+            else:
+                if (self.anim_frame >= 4 and self.anim_frame <= 7) or self.anim_frame == 0:
+                    self.anim_frame = 2
+                elif (self.anim_frame >= 8 and self.anim_frame <= 11) or self.anim_frame == 1:
+                    self.anim_frame = 3
     def input_check(self): #adjusts player movement direction
         if pygame.key.get_pressed()[K_LSHIFT]: #increases the player's movement speed if shift is held
             adjust_length = 2
@@ -139,6 +174,7 @@ class Enemy:
         self.just_landed = False
         self.next_direction = -1 #This is only used by bears and wolves
         self.dir_swapped = True #This is used by wolves only
+        self.anim_frame = 2
     def move(self, xm, ym):
         self.x = self.x + xm
         self.y = self.y + ym
@@ -205,8 +241,37 @@ class Enemy:
             else:
                 if self.x_veloc == 0 and self.falling == True and self.dir_swapped == False:
                     self.next_direction = -self.next_direction
-                    self.dir_swapped = True
-                    
+                    self.dir_swapped = True             
+    def determine_animation_frame(self):
+        if self.falling == True:
+            if self.x_veloc < 0:
+                self.anim_frame = 0
+            elif self.x_veloc > 0:
+                self.anim_frame = 1
+        else:
+            if self.x_veloc < 0:
+                if self.anim_frame >= 4 and self.anim_frame <= 5:
+                    if self.parent.frame_tick % (10) == 0:
+                        self.anim_frame = self.anim_frame + 1
+                elif self.anim_frame == 6:
+                    if self.parent.frame_tick % (10) == 0:
+                        self.anim_frame = self.anim_frame - 2
+                else:
+                    self.anim_frame = 4
+            elif self.x_veloc > 0:
+                if self.anim_frame >= 7 and self.anim_frame <= 8:
+                    if self.parent.frame_tick % (10) == 0:
+                        self.anim_frame = self.anim_frame + 1
+                elif self.anim_frame == 9:
+                    if self.parent.frame_tick % (10) == 0:
+                        self.anim_frame = self.anim_frame - 2
+                else:
+                    self.anim_frame = 7
+            else:
+                if (self.anim_frame >= 4 and self.anim_frame <= 7) or self.anim_frame == 0:
+                    self.anim_frame = 2
+                elif (self.anim_frame >= 8 and self.anim_frame <= 11) or self.anim_frame == 1:
+                    self.anim_frame = 3
     def movement_check(self): #checks to see if the enemy is allowed to continue moving, and stops or moves them as appropriate
         self.move((self.x_veloc * TERRAIN_X_SIZE / ENEMY_SPEED_RATIO[self.ID]), 0)
         for terrain in self.parent.terrain_list:
@@ -241,12 +306,12 @@ class Controller:
         for ID in range(22): #Add the terrain texture list to memory
             self.terrain_textures.append(self.create_terrain_texture(ID))
         self.enemy_textures = []
-        for ID in range(3):
-            self.enemy_textures.append(self.create_enemy_texture(ID))
+        self.create_enemy_textures()
         self.terrain_list = []
         self.enemy_list = []
         self.background_texture = pygame.transform.scale(pygame.image.load(r"anim\Background.png"), (SCREEN_WIDTH * 2, SCREEN_HEIGHT * 2))
-        self.parallax = [-SCREEN_WIDTH, -SCREEN_HEIGHT / 3]
+        self.parallax = [0, -SCREEN_HEIGHT]
+        self.parallax_old = [0, -SCREEN_HEIGHT]
         self.level = 1
         self.load_level(self.level)
         self.messages = pygame.transform.scale(pygame.image.load(r"anim\Victory.png"), (SCREEN_WIDTH / 2, SCREEN_HEIGHT / 8))
@@ -263,11 +328,12 @@ class Controller:
         if self.frame_tick % 120 == 0:
             for terrain in self.terrain_list:
                 if terrain.ID == 21:
-                    self.enemy_list.append(Enemy(self, 1, terrain.rect.left / TERRAIN_X_SIZE, (terrain.rect.top) / TERRAIN_Y_SIZE + 1.0/3))
+                    self.enemy_list.append(Enemy(self, 1, terrain.rect.left / TERRAIN_X_SIZE, (terrain.rect.top) / TERRAIN_Y_SIZE + 1.0/2))
         for enemy in self.enemy_list:
             enemy.gravity()
             enemy.AI()
             enemy.movement_check()
+            enemy.determine_animation_frame()
     def draw_stuff(self):
         self.window.blit(self.background_texture, Rect(self.parallax[0], self.parallax[1], 0, 0)) #Draw the background
         self.window.blit(self.background_texture, Rect(self.parallax[0] + 2 * SCREEN_WIDTH, self.parallax[1], 0, 0))
@@ -277,20 +343,23 @@ class Controller:
                     draw_y = terrain.rect.top - self.player.y + self.player.rect.top
                     if draw_x <= SCREEN_WIDTH and draw_x >= -TERRAIN_X_SIZE and draw_y <= SCREEN_HEIGHT and draw_y >= -TERRAIN_Y_SIZE:
                         self.window.blit(self.terrain_textures[terrain.ID], Rect(draw_x, draw_y, TERRAIN_X_SIZE, TERRAIN_Y_SIZE + 1))
-        self.window.blit(self.player.image, self.player.rect) #Draw the player
+        self.window.blit(self.player.image[self.player.anim_frame], self.player.rect) #Draw the player
         for enemy in self.enemy_list: #Draw each enemy
             draw_x = enemy.rect.left - self.player.x + self.player.rect.left
             draw_y = enemy.rect.top - self.player.y + self.player.rect.top
             if draw_x <= SCREEN_WIDTH and draw_x >= -TERRAIN_X_SIZE and draw_y <= SCREEN_HEIGHT and draw_y >= -TERRAIN_Y_SIZE:
-                self.window.blit(self.enemy_textures[enemy.ID], Rect(draw_x, draw_y, ENEMY_X_SIZE[enemy.ID], ENEMY_Y_SIZE[enemy.ID]))
+                self.window.blit(self.enemy_textures[enemy.ID * 10 + enemy.anim_frame], Rect(draw_x, draw_y, ENEMY_X_SIZE[enemy.ID], ENEMY_Y_SIZE[enemy.ID]))
     def update_player(self): #Updates the player's position
         self.player.input_check() #Checks the player's input
         self.player.gravity() #Simulates gravity and downward collision detection
         self.player.movement_check() #Horizontal movement and associated collision detection
+        self.player.determine_animation_frame() #Select the correct player image
     def create_terrain_texture(self, ID): #Generates a preloaded terrain texture for convenient access
         return pygame.transform.scale(pygame.image.load(r"Terrain\Terrain" + str(ID) + ".png"), (TERRAIN_X_SIZE, TERRAIN_Y_SIZE + 1)) #+1 prevents a horizontal tearing issue
-    def create_enemy_texture(self, ID): #Generates a preloaded enemy texture for convenient access
-        return pygame.transform.scale(pygame.image.load(r"anim\enemy" + str(ID) + ".png"), (ENEMY_X_SIZE[ID], ENEMY_Y_SIZE[ID])) #+1 prevents a horizontal tearing issue
+    def create_enemy_textures(self): #Generates preloaded enemy textures for convenient access
+        for ID in range(0, 3): #load a texture for each frame for each enemy
+            for frame in range(10):
+                self.enemy_textures.append(pygame.transform.scale(pygame.image.load(r"anim\enemy" + str(ID) + "-" + str(frame) + ".png"), (ENEMY_X_SIZE[ID], ENEMY_Y_SIZE[ID])))
     def load_level(self, level_num): #Reads a given level and builds appropriate terrain
         self.terrain_list = [] #Remove old terrain
         self.enemy_list = [] #Remove old enemies
@@ -315,6 +384,9 @@ class Controller:
             pygame.display.update()
             self.mainClock.tick(FPS)
         self.load_level(self.level)
+        self.parallax = []
+        self.parallax.append(self.parallax_old[0])
+        self.parallax.append(self.parallax_old[1])
     def victory(self): #If the player succeeds, load the next level
         for iterate in range(75): #this loop is the victory animation
             self.draw_stuff()
@@ -323,6 +395,7 @@ class Controller:
             self.mainClock.tick(FPS)
         self.level = self.level + 1
         self.load_level(self.level)
+        self.parallax_old = self.parallax
     def run(self): #The main loop
         STOP = False
         while not STOP: 
