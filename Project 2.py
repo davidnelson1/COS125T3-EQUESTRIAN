@@ -84,7 +84,7 @@ class Player:
                 self.x_veloc = -adjust_length
         elif pygame.key.get_pressed()[K_RIGHT]:
                 self.x_veloc = adjust_length
-        elif self.falling == False: #makes the player stop moving when grounded and not attempting to move
+        else: #makes the player stop moving when not attempting to move
             self.x_veloc = 0
         if pygame.key.get_pressed()[K_UP] and self.falling == False and self.just_landed == False: #allows jumping while on the ground
             self.falling = True
