@@ -40,28 +40,28 @@ class Player:
     def move(self, xm, ym): #adjusts the player's position
         self.x = self.x + xm
         self.y = self.y + ym
-        self.parent.parallax[0] = self.parent.parallax[0] - xm / 5
-        if self.parent.parallax[0] <= -2 * SCREEN_WIDTH:
+        self.parent.parallax[0] = self.parent.parallax[0] - xm / 5 #adjust the background
+        if self.parent.parallax[0] <= -2 * SCREEN_WIDTH: #loop the background if it would scroll off the screen
             self.parent.parallax[0] = self.parent.parallax[0] + 2 * SCREEN_WIDTH
         elif self.parent.parallax[0] >= 0:
             self.parent.parallax[0] = self.parent.parallax[0] - 2 * SCREEN_WIDTH
-    def determine_animation_frame(self):
-        if self.falling == True:
+    def determine_animation_frame(self): #figure out what frame the player should display
+        if self.falling == True: #if falling, display one of two falling frames
             if self.x_veloc < 0:
                 self.anim_frame = 0
             elif self.x_veloc > 0:
                 self.anim_frame = 1
         else:
-            if self.x_veloc < 0:
+            if self.x_veloc < 0: #if moving left, loop through four left-walking frames
                 if self.anim_frame >= 4 and self.anim_frame <= 6:
-                    if self.parent.frame_tick % (10 / abs(self.x_veloc)) == 0:
+                    if self.parent.frame_tick % (10 / abs(self.x_veloc)) == 0: #increment the frame based on the clock timer and player speed
                         self.anim_frame = self.anim_frame + 1
                 elif self.anim_frame == 7:
                     if self.parent.frame_tick % (10 / abs(self.x_veloc)) == 0:
                         self.anim_frame = self.anim_frame - 3
                 else:
                     self.anim_frame = 4
-            elif self.x_veloc > 0:
+            elif self.x_veloc > 0: #if walking right, loop through four right-walking frames
                 if self.anim_frame >= 8 and self.anim_frame <= 10:
                     if self.parent.frame_tick % (10 / abs(self.x_veloc)) == 0:
                         self.anim_frame = self.anim_frame + 1
@@ -70,7 +70,7 @@ class Player:
                         self.anim_frame = self.anim_frame - 3
                 else:
                     self.anim_frame = 8
-            else:
+            else: #if not moving at all, select one of two idle frames
                 if (self.anim_frame >= 4 and self.anim_frame <= 7) or self.anim_frame == 0:
                     self.anim_frame = 2
                 elif (self.anim_frame >= 8 and self.anim_frame <= 11) or self.anim_frame == 1:
@@ -95,33 +95,23 @@ class Player:
                 self.just_landed = False
             for terrain in self.parent.terrain_list:
                 if terrain.ID <= 9 and nearby(self, terrain): #check if the block is collideable
-                    if Rect(self.x, self.y + TERRAIN_Y_SIZE / 24, self.rect.width, self.rect.height).colliderect(terrain.rect):
+                    if Rect(self.x, self.y, self.rect.width, self.rect.height).colliderect(terrain.rect) and self.y <= terrain.rect.top: #if stuck in the ground, unstick the player
+                        self.y = self.y - TERRAIN_Y_SIZE / 24
+                        return
+                    elif Rect(self.x, self.y + TERRAIN_Y_SIZE / 24, self.rect.width, self.rect.height).colliderect(terrain.rect):
                         return
             self.falling = True
             return
         else: #if the player is falling
             self.y_veloc = self.y_veloc + TERRAIN_Y_SIZE / 60.0 #accelerate downward
-            if int(self.y_veloc) == 0:
+            if int(self.y_veloc) == 0: #prevent a division-by-zero
                 step = 1
             else:
                 step = int(self.y_veloc / abs(self.y_veloc))
             for dist in range(step, int(self.y_veloc), step): #Check for collisions, and end fall if one is detected
                 for terrain in self.parent.terrain_list:
                     if nearby(self, terrain):
-                        if Rect(self.x, self.y, self.rect.width, self.rect.height).colliderect(terrain.rect) and self.y > self.rect.top:
-                            if terrain.ID <= 9:
-                                self.falling = False
-                                self.y_veloc = 0.0
-                                self.y = self.y - TERRAIN_Y_SIZE / 24
-                                self.just_landed = True
-                                return
-                            elif terrain.ID <= 19:
-                                self.parent.death()
-                                return
-                            elif terrain.ID == 20:
-                                self.parent.victory()
-                                return
-                        elif Rect(self.x, self.y + dist, self.rect.width, self.rect.height).colliderect(terrain.rect):
+                        if Rect(self.x, self.y + dist, self.rect.width, self.rect.height).colliderect(terrain.rect):
                             if terrain.ID <= 9:
                                 self.falling = False
                                 self.y_veloc = 0.0
@@ -212,12 +202,12 @@ class Enemy:
     def AI(self):
         if self.ID == 0: #Perform snake behavior
             if not self.parent.player.falling and not self.falling: #Chase the player while both are grounded
-                if self.parent.player.x <= self.rect.left + SCREEN_WIDTH / 2 + self.rect.width and self.rect.left <= self.parent.player.x:
+                if self.parent.player.x <= self.rect.left + SCREEN_WIDTH / 2 + self.rect.width and self.rect.left <= self.parent.player.x: #If the snake is onscreen to the left, it heads right
                     if self.parent.player.x - self.x < TERRAIN_X_SIZE / ENEMY_SPEED_RATIO[self.ID]:
-                        self.x_veloc = (self.parent.player.x - self.x) / (TERRAIN_X_SIZE / ENEMY_SPEED_RATIO[self.ID])
+                        self.x_veloc = (self.parent.player.x - self.x) / (TERRAIN_X_SIZE / ENEMY_SPEED_RATIO[self.ID]) #keep pace with the player rather than shoot ahead
                     else:
                         self.x_veloc = 1
-                elif self.parent.player.x >= self.rect.left - SCREEN_WIDTH / 2 - self.parent.player.rect.width and self.rect.left >= self.parent.player.x:
+                elif self.parent.player.x >= self.rect.left - SCREEN_WIDTH / 2 - self.parent.player.rect.width and self.rect.left >= self.parent.player.x: #If the snake is onscreen to the right, it heads left
                     if self.x - self.parent.player.x < TERRAIN_X_SIZE / ENEMY_SPEED_RATIO[self.ID]:
                         self.x_veloc = (self.parent.player.x - self.x) / (TERRAIN_X_SIZE / ENEMY_SPEED_RATIO[self.ID])
                     else:
@@ -226,39 +216,39 @@ class Enemy:
                     self.x_veloc = 0
         elif self.ID == 1: #Perform bear behavior
             if not self.falling:
-                if self.x_veloc == 0:
+                if self.x_veloc == 0: #After stopping, switch directions and start moving again
                     self.x_veloc = self.next_direction
                     self.next_direction = -self.next_direction
         elif self.ID == 2: #Perform wolf behavior
             if not self.falling:
-                if self.parent.frame_tick % 80 == 0:
+                if self.parent.frame_tick % 80 == 0: #Jump at regular intervals
                     self.x_veloc = self.next_direction
                     self.y_veloc = -TERRAIN_Y_SIZE / 4.5
                     self.falling = True
                     self.dir_swapped = False
                 else:
                     self.x_veloc = 0
-            else:
+            else: #Switch directions after being stopped
                 if self.x_veloc == 0 and self.falling == True and self.dir_swapped == False:
                     self.next_direction = -self.next_direction
                     self.dir_swapped = True             
-    def determine_animation_frame(self):
-        if self.falling == True:
+    def determine_animation_frame(self): #Determine the correct enemy frame
+        if self.falling == True: #If midair, select one of two midair frames
             if self.x_veloc < 0:
                 self.anim_frame = 0
             elif self.x_veloc > 0:
                 self.anim_frame = 1
         else:
-            if self.x_veloc < 0:
+            if self.x_veloc < 0: #If grounded and walking left, loop through three left-walking frames
                 if self.anim_frame >= 4 and self.anim_frame <= 5:
-                    if self.parent.frame_tick % (10) == 0:
+                    if self.parent.frame_tick % (10) == 0: #Increment the frame based on the game timer
                         self.anim_frame = self.anim_frame + 1
                 elif self.anim_frame == 6:
                     if self.parent.frame_tick % (10) == 0:
                         self.anim_frame = self.anim_frame - 2
                 else:
                     self.anim_frame = 4
-            elif self.x_veloc > 0:
+            elif self.x_veloc > 0: #If grounded and walking right, loop through three right-walking frames
                 if self.anim_frame >= 7 and self.anim_frame <= 8:
                     if self.parent.frame_tick % (10) == 0:
                         self.anim_frame = self.anim_frame + 1
@@ -267,7 +257,7 @@ class Enemy:
                         self.anim_frame = self.anim_frame - 2
                 else:
                     self.anim_frame = 7
-            else:
+            else: #If motionless, select one of two idle frames
                 if (self.anim_frame >= 4 and self.anim_frame <= 7) or self.anim_frame == 0:
                     self.anim_frame = 2
                 elif (self.anim_frame >= 8 and self.anim_frame <= 11) or self.anim_frame == 1:
@@ -364,6 +354,7 @@ class Controller:
         self.terrain_list = [] #Remove old terrain
         self.enemy_list = [] #Remove old enemies
         self.frame_tick = 0 #Reset the frame counter
+        self.player.y_veloc = 0 #Prevent carry-over of a jump
         terrain_raw = open(r"Level Data\Level " + str(level_num) + ".txt", "r") #Access the level file
         done_cycling = False
         while not done_cycling:
@@ -376,7 +367,7 @@ class Controller:
                 if int(terrain_obj_split[0]) == 22: #positions the player at a "start" terrain block
                     self.player.x = int(terrain_obj_split[1]) * TERRAIN_X_SIZE + .5 * PLAYER_X_SIZE
                     self.player.y = int(terrain_obj_split[2]) * TERRAIN_Y_SIZE
-                elif int(terrain_obj_split[0]) >= 23 and int(terrain_obj_split[0]) <= 25:
+                elif int(terrain_obj_split[0]) >= 23 and int(terrain_obj_split[0]) <= 25: #spawn an enemy at each enemy block
                     self.enemy_list.append(Enemy(self, int(terrain_obj_split[0]) - 23, int(terrain_obj_split[1]), int(terrain_obj_split[2])))
     def death(self): #If the player dies, reset the level
         for iterate in range(20, 0, -1): #this loop is the death fade-from-white effect
@@ -414,5 +405,5 @@ def nearby(player, terrain):
         return True
     return False
 
-bwin = Controller(SCREEN_WIDTH, SCREEN_HEIGHT)
-bwin.run()
+bwin = Controller(SCREEN_WIDTH, SCREEN_HEIGHT) #Create the controller
+bwin.run() #Start the program
