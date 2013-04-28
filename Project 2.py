@@ -14,6 +14,8 @@ PLAYER_SPEED_RATIO = 15.0 #The number of frames it takes the player to travel 1 
 ENEMY_X_SIZE = [TERRAIN_X_SIZE / 2, 2 * TERRAIN_X_SIZE / 3, 2 * TERRAIN_X_SIZE / 3] #The pixel sizes of the enemy sprites
 ENEMY_Y_SIZE = [TERRAIN_Y_SIZE / 2, TERRAIN_Y_SIZE / 2, 2 * TERRAIN_Y_SIZE / 3]
 ENEMY_SPEED_RATIO = [10.0, 30.0, 10.0] #The number of frames it takes each enemy to travel 1 block
+BG_WIDTH = 8 * SCREEN_WIDTH
+BG_HEIGHT = 2 * SCREEN_HEIGHT
 
 pygame.init()
 pygame.display.set_caption("Horse Game, Version 7.1")
@@ -41,10 +43,10 @@ class Player:
         self.x = self.x + xm
         self.y = self.y + ym
         self.parent.parallax[0] = self.parent.parallax[0] - xm / 5 #adjust the background
-        if self.parent.parallax[0] <= -2 * SCREEN_WIDTH: #loop the background if it would scroll off the screen
-            self.parent.parallax[0] = self.parent.parallax[0] + 2 * SCREEN_WIDTH
+        if self.parent.parallax[0] <= -BG_WIDTH: #loop the background if it would scroll off the screen
+            self.parent.parallax[0] = self.parent.parallax[0] + BG_WIDTH
         elif self.parent.parallax[0] >= 0:
-            self.parent.parallax[0] = self.parent.parallax[0] - 2 * SCREEN_WIDTH
+            self.parent.parallax[0] = self.parent.parallax[0] - BG_WIDTH
     def determine_animation_frame(self): #figure out what frame the player should display
         if self.falling == True: #if falling, display one of two falling frames
             if self.x_veloc < 0:
@@ -299,7 +301,7 @@ class Controller:
         self.create_enemy_textures()
         self.terrain_list = []
         self.enemy_list = []
-        self.background_texture = pygame.transform.scale(pygame.image.load(r"anim\Background.png"), (SCREEN_WIDTH * 2, SCREEN_HEIGHT * 2))
+        self.background_texture = pygame.transform.scale(pygame.image.load(r"anim\Background.png"), (BG_WIDTH, BG_HEIGHT))
         self.parallax = [0, -SCREEN_HEIGHT]
         self.parallax_old = [0, -SCREEN_HEIGHT]
         self.level = 1
@@ -326,7 +328,7 @@ class Controller:
             enemy.determine_animation_frame()
     def draw_stuff(self):
         self.window.blit(self.background_texture, Rect(self.parallax[0], self.parallax[1], 0, 0)) #Draw the background
-        self.window.blit(self.background_texture, Rect(self.parallax[0] + 2 * SCREEN_WIDTH, self.parallax[1], 0, 0))
+        self.window.blit(self.background_texture, Rect(self.parallax[0] + BG_WIDTH, self.parallax[1], 0, 0))
         for terrain in self.terrain_list: #Draw each terrain object
             if terrain.ID <= 21: #Excludes script terrain from the draw procedure
                     draw_x = terrain.rect.left - self.player.x + self.player.rect.left #place the terrain based on the player's locatioin
