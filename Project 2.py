@@ -1,4 +1,6 @@
-import pygame, time, sys
+"""Sound help courtesy of http://thepythongamebook.com/en:pygame:step010"""
+
+import pygame, time, sys, os
 from pygame.locals import *
 
 #Constants
@@ -17,8 +19,9 @@ ENEMY_SPEED_RATIO = [10.0, 30.0, 10.0] #The number of frames it takes each enemy
 BG_WIDTH = 8 * SCREEN_WIDTH
 BG_HEIGHT = 2 * SCREEN_HEIGHT
 
+pygame.mixer.pre_init(44100, -16, 2, 2048)
 pygame.init()
-pygame.display.set_caption("Horse Game, Version 7.1")
+pygame.display.set_caption("Sugar Steed, Version 8.0")
 
 #This class tracks data related to the player.
 #There should only be one instance of this class.
@@ -36,6 +39,8 @@ class Player:
         self.y_veloc = 0.0
         self.x = 0 #initialize player's "actual" position and animation value
         self.y = 0
+        self.injure_sound = pygame.mixer.Sound(r"Sounds\Hurt.wav")
+        self.jump_sound = pygame.mixer.Sound(r"Sounds\Jump.wav")
         self.anim_frame = 3
         self.falling = False #initialize gravity-related variables
         self.just_landed = False
@@ -91,6 +96,7 @@ class Player:
         if pygame.key.get_pressed()[K_UP] and self.falling == False and self.just_landed == False: #allows jumping while on the ground
             self.falling = True
             self.y_veloc = -TERRAIN_Y_SIZE / 4.5
+            self.jump_sound.play()
     def gravity(self): #checks if the player has collided with the terrain
         if self.falling == False: #if the player is not falling and is not standing on a block, begin falling
             if self.just_landed == True: #This adds a waiting frame between possible jumps to prevent a collision issue
@@ -184,7 +190,7 @@ class Enemy:
         else: #if the enemy is falling
             self.y_veloc = self.y_veloc + TERRAIN_Y_SIZE / 60.0 #accelerate downward
             if self.y_veloc > TERRAIN_Y_SIZE / 2: #If an enemy falls too fast, kill it
-                self.parent.enemy_list.remove(self)
+                self.death()
             if int(self.y_veloc) == 0:
                 step = 1
             else:
@@ -199,7 +205,7 @@ class Enemy:
                             self.just_landed = True
                             return
                         elif terrain.ID <= 19:
-                            self.parent.enemy_list.remove(self)
+                            self.death()
                             return
         self.move(0, self.y_veloc) #Actually move the enemy
     def AI(self):
@@ -235,6 +241,12 @@ class Enemy:
                 if self.x_veloc == 0 and self.falling == True and self.dir_swapped == False:
                     self.next_direction = -self.next_direction
                     self.dir_swapped = True             
+    def death(self): #Kill the enemy
+        death_x = self.rect.left - self.parent.player.x + self.parent.player.rect.left
+        death_y = self.rect.top - self.parent.player.y + self.parent.player.rect.top
+        if death_x <= SCREEN_WIDTH and death_x >= 0 and death_y <= SCREEN_HEIGHT and death_y >= 0: #If on-screen, play the death sound
+            self.parent.enemy_sounds[self.ID].play(maxtime = 1000)
+        self.parent.enemy_list.remove(self)
     def determine_animation_frame(self): #Determine the correct enemy frame
         if self.falling == True: #If midair, select one of two midair frames
             if self.x_veloc < 0:
@@ -274,7 +286,7 @@ class Enemy:
                     self.x_veloc = 0
                     return
                 elif terrain.ID <= 19: #If the block is lethal, kill enemy
-                    self.parent.enemy_list.remove(self)
+                    self.death()
                     return
 
 #This class tracks the locations and types of terrain data.
@@ -296,10 +308,14 @@ class Controller:
         self.player = Player(self, 0)
         self.mainClock = pygame.time.Clock()
         self.terrain_textures = []
+        self.splash = pygame.transform.scale(pygame.image.load(r"anim\splash.png"), (SCREEN_WIDTH, SCREEN_HEIGHT))
         for ID in range(22): #Add the terrain texture list to memory
             self.terrain_textures.append(self.create_terrain_texture(ID))
         self.enemy_textures = []
         self.create_enemy_textures()
+        self.enemy_sounds = []
+        for ID in range(3):
+            self.enemy_sounds.append(pygame.mixer.Sound("Sounds\eHurt" + str(ID) + ".wav"))
         self.terrain_list = []
         self.enemy_list = []
         self.background_texture = pygame.transform.scale(pygame.image.load(r"anim\Background.png"), (BG_WIDTH, BG_HEIGHT))
@@ -373,7 +389,8 @@ class Controller:
                 elif int(terrain_obj_split[0]) >= 23 and int(terrain_obj_split[0]) <= 25: #spawn an enemy at each enemy block
                     self.enemy_list.append(Enemy(self, int(terrain_obj_split[0]) - 23, int(terrain_obj_split[1]), int(terrain_obj_split[2])))
     def death(self): #If the player dies, reset the level
-        for iterate in range(20, 0, -1): #this loop is the death fade-from-white effect
+        self.player.injure_sound.play()
+        for iterate in range(20, 0, -1): #this loop is the black-screen death effect
             self.window.fill(BLACK)
             pygame.display.update()
             self.mainClock.tick(FPS)
@@ -391,6 +408,19 @@ class Controller:
         self.load_level(self.level)
         self.parallax_old = self.parallax
     def run(self): #The main loop
+        STOP = False
+        self.window.blit(self.splash, Rect(0, 0, 0, 0)) #Display the splash screen
+        pygame.display.update()
+        while not STOP: #Wait for the player to hit the space key
+            for event in pygame.event.get():
+                if event.type == KEYDOWN:
+                    if event.key == K_SPACE:
+                        STOP = True
+                        pygame.mixer.Sound(r"Sounds\Open.wav").play()
+                        self.window.fill(BLACK) #Clear the screen
+                        pygame.display.update()
+                        for i in range(20): #Wait a bit
+                            self.mainClock.tick(FPS)
         STOP = False
         while not STOP: 
             self.mainClock.tick(FPS) #Wait until the next frame
