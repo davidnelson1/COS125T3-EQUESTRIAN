@@ -106,7 +106,7 @@ class Player:
             return
         else: #if the player is falling
             self.y_veloc = self.y_veloc + TERRAIN_Y_SIZE / 60.0 #accelerate downward
-            if self.y_veloc > TERRAIN_Y_SIZE: #If falling too fast, die
+            if self.y_veloc > TERRAIN_Y_SIZE / 2: #If falling too fast, die
                 self.parent.death()
             if int(self.y_veloc) == 0: #prevent a division-by-zero
                 step = 1
@@ -183,13 +183,13 @@ class Enemy:
             return
         else: #if the enemy is falling
             self.y_veloc = self.y_veloc + TERRAIN_Y_SIZE / 60.0 #accelerate downward
-            if self.y_veloc > TERRAIN_Y_SIZE: #If an enemy falls too fast, kill it
+            if self.y_veloc > TERRAIN_Y_SIZE / 2: #If an enemy falls too fast, kill it
                 self.parent.enemy_list.remove(self)
             if int(self.y_veloc) == 0:
                 step = 1
             else:
                 step = int(self.y_veloc / abs(self.y_veloc))
-            for dist in range(step, int(self.y_veloc), step): #Check for collisions, and end fall if one is detected
+            for dist in range(step*2, int(self.y_veloc), step*2): #Check for collisions, and end fall if one is detected
                 for terrain in self.parent.terrain_list:
                     if Rect(self.rect.left, self.rect.top + dist, self.rect.width, self.rect.height).colliderect(terrain.rect):
                         if terrain.ID <= 9:
