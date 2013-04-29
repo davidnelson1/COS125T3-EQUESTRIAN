@@ -106,6 +106,8 @@ class Player:
             return
         else: #if the player is falling
             self.y_veloc = self.y_veloc + TERRAIN_Y_SIZE / 60.0 #accelerate downward
+            if self.y_veloc > TERRAIN_Y_SIZE: #If falling too fast, die
+                self.parent.death()
             if int(self.y_veloc) == 0: #prevent a division-by-zero
                 step = 1
             else:
@@ -119,12 +121,6 @@ class Player:
                                 self.y_veloc = 0.0
                                 self.y = self.y + dist
                                 self.just_landed = True
-                                return
-                            elif terrain.ID <= 19:
-                                self.parent.death()
-                                return
-                            elif terrain.ID == 20:
-                                self.parent.victory()
                                 return
         self.move(0, self.y_veloc) #Actually move the player
     def movement_check(self): #checks to see if the player is allowed to continue moving, and stops or moves them as appropriate
@@ -178,12 +174,17 @@ class Enemy:
                 self.just_landed = False
             for terrain in self.parent.terrain_list:
                 if terrain.ID <= 9: #check if the block is collideable
+                    if Rect(self.x, self.y, self.rect.width, self.rect.height).colliderect(terrain.rect) and self.y <= terrain.rect.top: #if stuck in the ground, unstick the player
+                        self.y = self.y - TERRAIN_Y_SIZE / 24
+                        return
                     if Rect(self.rect.left, self.rect.top + TERRAIN_Y_SIZE / 24, self.rect.width, self.rect.height).colliderect(terrain.rect):
                         return
             self.falling = True
             return
         else: #if the enemy is falling
             self.y_veloc = self.y_veloc + TERRAIN_Y_SIZE / 60.0 #accelerate downward
+            if self.y_veloc > TERRAIN_Y_SIZE: #If an enemy falls too fast, kill it
+                self.parent.enemy_list.remove(self)
             if int(self.y_veloc) == 0:
                 step = 1
             else:
