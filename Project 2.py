@@ -318,6 +318,7 @@ class Controller:
         self.player = Player(self, 0)
         self.mainClock = pygame.time.Clock()
         self.score = 0
+        self.lost_score = 0
         self.terrain_textures = []
         self.font = pygame.font.SysFont("", 48)
         self.splash = pygame.transform.scale(pygame.image.load(r"anim\splash.png"), (SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -343,6 +344,9 @@ class Controller:
         self.update_enemies()
         self.update_window()
         self.frame_tick = self.frame_tick + 1
+        if self.lost_score > 0:
+            self.lost_score = self.lost_score - 2
+            self.score = self.score - 2
     def update_window(self): #Updates the display
         self.draw_stuff()
         pygame.display.update() #Move drawn objects to the screen
@@ -384,6 +388,8 @@ class Controller:
         self.player.gravity() #Simulates gravity and downward collision detection
         self.player.movement_check() #Horizontal movement and associated collision detection
         self.player.determine_animation_frame() #Select the correct player image
+        if (FPS*60 - self.frame_tick) <= 0:
+            self.death()
     def create_terrain_texture(self, ID): #Generates a preloaded terrain texture for convenient access
         return pygame.transform.scale(pygame.image.load(r"Terrain\Terrain" + str(ID) + ".png"), (TERRAIN_X_SIZE, TERRAIN_Y_SIZE + 1)) #+1 prevents a horizontal tearing issue
     def create_enemy_textures(self): #Generates preloaded enemy textures for convenient access
@@ -417,6 +423,7 @@ class Controller:
             pygame.display.update()
             self.mainClock.tick(FPS)
         self.load_level(self.level)
+        self.lost_score = 50
         self.parallax = []
         self.parallax.append(self.parallax_old[0])
         self.parallax.append(self.parallax_old[1])
