@@ -9,7 +9,7 @@ WHITE = (255, 255, 255)
 FPS = 40 #The frame rate
 SCREEN_WIDTH = 800 #The values that determine the window size
 SCREEN_HEIGHT = 600
-SOUND_ENABLED = "n" #y to enable sound, n to disable
+SOUND_ENABLED = "y" #y to enable sound, n to disable
 TERRAIN_X_SIZE = SCREEN_WIDTH / 10 #The pixel size of a standard terrain block
 TERRAIN_Y_SIZE = SCREEN_HEIGHT / 10
 PLAYER_X_SIZE = 2 * TERRAIN_X_SIZE / 3 #The pixel sizes of the player sprite
@@ -330,6 +330,7 @@ class Controller:
         if SOUND_ENABLED == "y":
             for ID in range(3):
                 self.enemy_sounds.append(pygame.mixer.Sound("Sounds\eHurt" + str(ID) + ".wav"))
+            pygame.mixer.music.load("Sounds\music.wav")
         self.terrain_list = []
         self.enemy_list = []
         self.background_texture = pygame.transform.scale(pygame.image.load(r"anim\Background.png"), (BG_WIDTH, BG_HEIGHT))
@@ -417,6 +418,7 @@ class Controller:
                     self.enemy_list.append(Enemy(self, int(terrain_obj_split[0]) - 23, int(terrain_obj_split[1]), int(terrain_obj_split[2])))
     def death(self): #If the player dies, reset the level
         if SOUND_ENABLED == "y":
+            pygame.mixer.music.pause()
             self.player.injure_sound.play()
         for iterate in range(20, 0, -1): #this loop is the black-screen death effect
             self.window.fill(BLACK)
@@ -427,6 +429,7 @@ class Controller:
         self.parallax = []
         self.parallax.append(self.parallax_old[0])
         self.parallax.append(self.parallax_old[1])
+        pygame.mixer.music.unpause()
     def victory(self): #If the player succeeds, load the next level
         for iterate in range(45): #this loop is the victory animation
             self.draw_stuff()
@@ -462,6 +465,7 @@ class Controller:
                         for i in range(20): #Wait a bit
                             self.mainClock.tick(FPS)
         STOP = False
+        pygame.mixer.music.play(-1) #Start the music
         while not STOP: 
             self.mainClock.tick(FPS) #Wait until the next frame
             self.update_all()
