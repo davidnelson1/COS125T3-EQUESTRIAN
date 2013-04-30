@@ -4,10 +4,12 @@ import pygame, time, sys, os
 from pygame.locals import *
 
 #Constants
-BLACK = (0, 0, 0) #Color code
+BLACK = (0, 0, 0) #Color codes
+WHITE = (255, 255, 255)
 FPS = 40 #The frame rate
 SCREEN_WIDTH = 800 #The values that determine the window size
 SCREEN_HEIGHT = 600
+SOUND_ENABLED = "n" #y to enable sound, n to disable
 TERRAIN_X_SIZE = SCREEN_WIDTH / 10 #The pixel size of a standard terrain block
 TERRAIN_Y_SIZE = SCREEN_HEIGHT / 10
 PLAYER_X_SIZE = 2 * TERRAIN_X_SIZE / 3 #The pixel sizes of the player sprite
@@ -19,8 +21,14 @@ ENEMY_SPEED_RATIO = [10.0, 30.0, 10.0] #The number of frames it takes each enemy
 BG_WIDTH = 8 * SCREEN_WIDTH
 BG_HEIGHT = 2 * SCREEN_HEIGHT
 
-pygame.mixer.pre_init(44100, -16, 2, 2048)
-pygame.init()
+if SOUND_ENABLED == "y":
+    pygame.mixer.pre_init(44100, -16, 2, 2048)
+    pygame.init()
+    pygame.mixer.init()
+elif SOUND_ENABLED == "n":
+    pygame.init()
+else:
+    sys.exit()
 pygame.display.set_caption("Sugar Steed, Version 8.0")
 
 #This class tracks data related to the player.
@@ -39,8 +47,9 @@ class Player:
         self.y_veloc = 0.0
         self.x = 0 #initialize player's "actual" position and animation value
         self.y = 0
-        self.injure_sound = pygame.mixer.Sound(r"Sounds\Hurt.wav")
-        self.jump_sound = pygame.mixer.Sound(r"Sounds\Jump.wav")
+        if SOUND_ENABLED == "y":
+            self.injure_sound = pygame.mixer.Sound(r"Sounds\Hurt.wav")
+            self.jump_sound = pygame.mixer.Sound(r"Sounds\Jump.wav")
         self.anim_frame = 3
         self.falling = False #initialize gravity-related variables
         self.just_landed = False
@@ -96,7 +105,8 @@ class Player:
         if pygame.key.get_pressed()[K_UP] and self.falling == False and self.just_landed == False: #allows jumping while on the ground
             self.falling = True
             self.y_veloc = -TERRAIN_Y_SIZE / 4.5
-            self.jump_sound.play()
+            if SOUND_ENABLED == "y":
+                self.jump_sound.play()
     def gravity(self): #checks if the player has collided with the terrain
         if self.falling == False: #if the player is not falling and is not standing on a block, begin falling
             if self.just_landed == True: #This adds a waiting frame between possible jumps to prevent a collision issue
@@ -244,7 +254,7 @@ class Enemy:
     def death(self): #Kill the enemy
         death_x = self.rect.left - self.parent.player.x + self.parent.player.rect.left
         death_y = self.rect.top - self.parent.player.y + self.parent.player.rect.top
-        if death_x <= SCREEN_WIDTH and death_x >= 0 and death_y <= SCREEN_HEIGHT and death_y >= 0: #If on-screen, play the death sound
+        if death_x <= SCREEN_WIDTH and death_x >= 0 and death_y <= SCREEN_HEIGHT and death_y >= 0 and SOUND_ENABLED == "y": #If on-screen, play the death sound
             self.parent.enemy_sounds[self.ID].play(maxtime = 1000)
         self.parent.enemy_list.remove(self)
     def determine_animation_frame(self): #Determine the correct enemy frame
@@ -307,15 +317,18 @@ class Controller:
         self.window = pygame.display.set_mode([width, height])
         self.player = Player(self, 0)
         self.mainClock = pygame.time.Clock()
+        self.score = 0
         self.terrain_textures = []
+        self.font = pygame.font.SysFont("", 48)
         self.splash = pygame.transform.scale(pygame.image.load(r"anim\splash.png"), (SCREEN_WIDTH, SCREEN_HEIGHT))
         for ID in range(22): #Add the terrain texture list to memory
             self.terrain_textures.append(self.create_terrain_texture(ID))
         self.enemy_textures = []
         self.create_enemy_textures()
         self.enemy_sounds = []
-        for ID in range(3):
-            self.enemy_sounds.append(pygame.mixer.Sound("Sounds\eHurt" + str(ID) + ".wav"))
+        if SOUND_ENABLED == "y":
+            for ID in range(3):
+                self.enemy_sounds.append(pygame.mixer.Sound("Sounds\eHurt" + str(ID) + ".wav"))
         self.terrain_list = []
         self.enemy_list = []
         self.background_texture = pygame.transform.scale(pygame.image.load(r"anim\Background.png"), (BG_WIDTH, BG_HEIGHT))
@@ -358,6 +371,14 @@ class Controller:
             draw_y = enemy.rect.top - self.player.y + self.player.rect.top
             if draw_x <= SCREEN_WIDTH and draw_x >= -TERRAIN_X_SIZE and draw_y <= SCREEN_HEIGHT and draw_y >= -TERRAIN_Y_SIZE:
                 self.window.blit(self.enemy_textures[enemy.ID * 10 + enemy.anim_frame], Rect(draw_x, draw_y, ENEMY_X_SIZE[enemy.ID], ENEMY_Y_SIZE[enemy.ID]))
+        clock_text = self.font.render("Time Remaining: " + str(int((FPS*60 - self.frame_tick)/FPS)), True, BLACK)
+        clock_rect = clock_text.get_rect()
+        score_text = self.font.render("Score: " + str(self.score), True, BLACK)
+        score_rect = score_text.get_rect()
+        self.window.fill(WHITE, clock_rect)
+        self.window.fill(WHITE, Rect(SCREEN_WIDTH - score_rect.width, 0, score_rect.width, score_rect.height))
+        self.window.blit(clock_text, Rect(0, 0, 0, 0))
+        self.window.blit(score_text, Rect(SCREEN_WIDTH - score_rect.width, 0, 0, 0))
     def update_player(self): #Updates the player's position
         self.player.input_check() #Checks the player's input
         self.player.gravity() #Simulates gravity and downward collision detection
@@ -389,7 +410,8 @@ class Controller:
                 elif int(terrain_obj_split[0]) >= 23 and int(terrain_obj_split[0]) <= 25: #spawn an enemy at each enemy block
                     self.enemy_list.append(Enemy(self, int(terrain_obj_split[0]) - 23, int(terrain_obj_split[1]), int(terrain_obj_split[2])))
     def death(self): #If the player dies, reset the level
-        self.player.injure_sound.play()
+        if SOUND_ENABLED == "y":
+            self.player.injure_sound.play()
         for iterate in range(20, 0, -1): #this loop is the black-screen death effect
             self.window.fill(BLACK)
             pygame.display.update()
@@ -399,11 +421,21 @@ class Controller:
         self.parallax.append(self.parallax_old[0])
         self.parallax.append(self.parallax_old[1])
     def victory(self): #If the player succeeds, load the next level
-        for iterate in range(75): #this loop is the victory animation
+        for iterate in range(45): #this loop is the victory animation
             self.draw_stuff()
             self.window.blit(self.messages, Rect(SCREEN_WIDTH / 4, 7 * SCREEN_HEIGHT / 16, 0, 0), Rect(0, 0, iterate * self.messages_rect.width / 45, self.messages_rect.height))
             pygame.display.update()
             self.mainClock.tick(FPS)
+        while (FPS*60 - self.frame_tick)/FPS > 1: #Swap the time remaining to the score
+            self.frame_tick = self.frame_tick + FPS / 2
+            self.score = self.score + FPS / 4
+            self.draw_stuff()
+            self.window.blit(self.messages, Rect(SCREEN_WIDTH / 4, 7 * SCREEN_HEIGHT / 16, 0, 0), Rect(0, 0, iterate * self.messages_rect.width / 45, self.messages_rect.height))
+            pygame.display.update()
+        self.score = self.score + int((FPS*60 - self.frame_tick) / 4)
+        self.draw_stuff()
+        self.window.blit(self.messages, Rect(SCREEN_WIDTH / 4, 7 * SCREEN_HEIGHT / 16, 0, 0), Rect(0, 0, iterate * self.messages_rect.width / 45, self.messages_rect.height))
+        pygame.display.update()
         self.level = self.level + 1
         self.load_level(self.level)
         self.parallax_old = self.parallax
@@ -416,7 +448,8 @@ class Controller:
                 if event.type == KEYDOWN:
                     if event.key == K_SPACE:
                         STOP = True
-                        pygame.mixer.Sound(r"Sounds\Open.wav").play()
+                        if SOUND_ENABLED == "y":
+                            pygame.mixer.Sound(r"Sounds\Open.wav").play()
                         self.window.fill(BLACK) #Clear the screen
                         pygame.display.update()
                         for i in range(20): #Wait a bit
