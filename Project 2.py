@@ -122,7 +122,7 @@ class Player:
             return
         else: #if the player is falling
             self.y_veloc = self.y_veloc + TERRAIN_Y_SIZE / 60.0 #accelerate downward
-            if self.y_veloc > TERRAIN_Y_SIZE / 2: #If falling too fast, die
+            if self.y_veloc > TERRAIN_Y_SIZE: #If falling too fast, die
                 self.parent.death()
             if int(self.y_veloc) == 0: #prevent a division-by-zero
                 step = 1
@@ -143,7 +143,7 @@ class Player:
         self.move((self.x_veloc * TERRAIN_X_SIZE / PLAYER_SPEED_RATIO), 0)
         for terrain in self.parent.terrain_list:
             if nearby(self, terrain):
-                if Rect(self.x, self.y - TERRAIN_Y_SIZE / 24, self.rect.width, self.rect.height).colliderect(terrain.rect):
+                if Rect(self.x, self.y - TERRAIN_Y_SIZE / 24, self.rect.width, self.rect.height).colliderect(terrain.rect) and self.y <= terrain.rect.top + TERRAIN_Y_SIZE:
                     if terrain.ID <= 9: #If the block is collideable, prevent collision
                         self.move((-self.x_veloc * TERRAIN_X_SIZE / PLAYER_SPEED_RATIO), 0)
                         if self.x_veloc > 0:
