@@ -29,7 +29,7 @@ elif SOUND_ENABLED == "n":
     pygame.init()
 else:
     sys.exit()
-pygame.display.set_caption("Sugar Steed, Version 8.0")
+pygame.display.set_caption("Sugar Steed")
 
 #This class tracks data related to the player.
 #There should only be one instance of this class.
@@ -376,12 +376,11 @@ class Controller:
             draw_y = enemy.rect.top - self.player.y + self.player.rect.top
             if draw_x <= SCREEN_WIDTH and draw_x >= -TERRAIN_X_SIZE and draw_y <= SCREEN_HEIGHT and draw_y >= -TERRAIN_Y_SIZE:
                 self.window.blit(self.enemy_textures[enemy.ID * 10 + enemy.anim_frame], Rect(draw_x, draw_y, ENEMY_X_SIZE[enemy.ID], ENEMY_Y_SIZE[enemy.ID]))
-        clock_text = self.font.render("Time Remaining: " + str(int((FPS*60 - self.frame_tick)/FPS)), True, BLACK)
+        clock_text = self.font.render("Level " + str(self.level) + ", Time: "  + str(int((FPS*60 - self.frame_tick)/FPS)), True, BLACK)
         clock_rect = clock_text.get_rect()
         score_text = self.font.render("Score: " + str(self.score), True, BLACK)
         score_rect = score_text.get_rect()
-        self.window.fill(WHITE, clock_rect)
-        self.window.fill(WHITE, Rect(SCREEN_WIDTH - score_rect.width, 0, score_rect.width, score_rect.height))
+        self.window.fill(WHITE, Rect(0, 0, SCREEN_WIDTH, score_rect.height))
         self.window.blit(clock_text, Rect(0, 0, 0, 0))
         self.window.blit(score_text, Rect(SCREEN_WIDTH - score_rect.width, 0, 0, 0))
     def update_player(self): #Updates the player's position
