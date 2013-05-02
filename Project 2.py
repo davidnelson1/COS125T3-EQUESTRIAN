@@ -314,6 +314,7 @@ class Terrain:
 class Controller:
     def __init__(self, width, height): #This generates most other top-level class instances.
         self.frame_tick = 0 #Used for bear spawning
+        self.game_end = False #Flag for beating the last level
         self.window = pygame.display.set_mode([width, height])
         self.player = Player(self, 0)
         self.mainClock = pygame.time.Clock()
@@ -348,6 +349,7 @@ class Controller:
         if self.lost_score > 0:
             self.lost_score = self.lost_score - 2
             self.score = self.score - 2
+        return self.game_end
     def update_window(self): #Updates the display
         self.draw_stuff()
         pygame.display.update() #Move drawn objects to the screen
@@ -401,7 +403,11 @@ class Controller:
         self.enemy_list = [] #Remove old enemies
         self.frame_tick = 0 #Reset the frame counter
         self.player.y_veloc = 0 #Prevent carry-over of a jump
-        terrain_raw = open(r"Level Data\Level " + str(level_num) + ".txt", "r") #Access the level file
+        try:
+            terrain_raw = open(r"Level Data\Level " + str(level_num) + ".txt", "r") #Access the level file
+        except: #If there is no such level
+            self.game_end = True
+            return
         done_cycling = False
         while not done_cycling:
             terrain_obj_raw = terrain_raw.readline()[:-1] #obtain a line (minus the newline character)
@@ -449,30 +455,61 @@ class Controller:
         self.load_level(self.level)
         self.parallax_old = self.parallax
     def run(self): #The main loop
-        STOP = False
-        self.window.blit(self.splash, Rect(0, 0, 0, 0)) #Display the splash screen
-        pygame.display.update()
-        while not STOP: #Wait for the player to hit the space key
-            for event in pygame.event.get():
-                if event.type == KEYDOWN:
-                    if event.key == K_SPACE:
+        while True:
+            STOP = False
+            self.window.blit(self.splash, Rect(0, 0, 0, 0)) #Display the splash screen
+            pygame.display.update()
+            while not STOP: #Display the splash screen until spacebar is pressed
+                for event in pygame.event.get():
+                    if event.type == KEYDOWN:
+                        if event.key == K_SPACE:
+                            STOP = True
+                            if SOUND_ENABLED == "y":
+                                pygame.mixer.Sound(r"Sounds\Open.wav").play()
+                            self.window.fill(BLACK) #Clear the screen
+                            pygame.display.update()
+                            for i in range(20): #Wait a bit
+                                self.mainClock.tick(FPS)
+            STOP = False
+            pygame.mixer.music.play(-1) #Start the music
+            while not STOP: #the game loop
+                self.mainClock.tick(FPS) #Wait until the next frame
+                STOP = self.update_all() #Update, and determine if the game was beaten
+                for event in pygame.event.get(): #If the window is closed, exit pygame
+                    if event.type == QUIT:
                         STOP = True
-                        if SOUND_ENABLED == "y":
-                            pygame.mixer.Sound(r"Sounds\Open.wav").play()
-                        self.window.fill(BLACK) #Clear the screen
-                        pygame.display.update()
-                        for i in range(20): #Wait a bit
-                            self.mainClock.tick(FPS)
-        STOP = False
-        pygame.mixer.music.play(-1) #Start the music
-        while not STOP: 
-            self.mainClock.tick(FPS) #Wait until the next frame
-            self.update_all()
-            for event in pygame.event.get(): #If the window is closed, exit pygame
-                if event.type == QUIT:
-                    STOP = True
-                    pygame.quit()
-
+                        pygame.quit()
+            STOP = False
+            victor_text1 = self.font.render("Congratulations, you have prevailed!", True, WHITE) #Generate the end game text
+            victor_rect1 = victor_text1.get_rect()
+            victor_text2 = self.font.render("You have had your fill of sugar cubes.", True, WHITE)
+            victor_rect2 = victor_text2.get_rect()
+            victor_text3 = self.font.render("Your final score was " + str(self.score) + ".", True, WHITE)
+            victor_rect3 = victor_text3.get_rect()
+            victor_text4 = self.font.render("Press space to return to the title screen.", True, WHITE)
+            victor_rect4 = victor_text4.get_rect()
+            victor_text5 = self.font.render("Press any other key to quit.", True, WHITE)
+            victor_rect5 = victor_text5.get_rect()
+            while not STOP: #The victory screen
+                self.window.fill(BLACK) #Draw the relevant info
+                self.window.blit(victor_text1, Rect(SCREEN_WIDTH / 2 - victor_rect1.width / 2, SCREEN_HEIGHT / 2 - victor_rect3.height / 2 - victor_rect2.height - victor_rect1.height, 0, 0))
+                self.window.blit(victor_text2, Rect(SCREEN_WIDTH / 2 - victor_rect2.width / 2, SCREEN_HEIGHT / 2 - victor_rect3.height / 2 - victor_rect2.height, 0, 0))
+                self.window.blit(victor_text3, Rect(SCREEN_WIDTH / 2 - victor_rect3.width / 2, SCREEN_HEIGHT / 2 - victor_rect3.height / 2, 0, 0))
+                self.window.blit(victor_text4, Rect(SCREEN_WIDTH / 2 - victor_rect4.width / 2, SCREEN_HEIGHT / 2 + victor_rect3.height / 2, 0, 0))
+                self.window.blit(victor_text5, Rect(SCREEN_WIDTH / 2 - victor_rect5.width / 2, SCREEN_HEIGHT / 2 + victor_rect3.height / 2 + victor_rect4.height, 0, 0))
+                pygame.display.update() #Flip the screen
+                self.mainClock.tick(FPS)
+                for event in pygame.event.get():
+                    if event.type == KEYDOWN: #If spacebar is hit, start over
+                        if event.key == K_SPACE:
+                            STOP = True
+                            self.game_end = False
+                            self.level = 1
+                            self.score = 0
+                            self.load_level(self.level)
+                        else: #End the game if another key is hit
+                            pygame.quit()
+                            sys.exit()
 def nearby(player, terrain):
     """
     Determines if a player object and a terrain object are in a certain range of each other. Returns True if so, and False otherwise.
