@@ -1,6 +1,6 @@
 """Sound help courtesy of http://thepythongamebook.com/en:pygame:step010"""
 
-import pygame, time, sys, os
+import pygame, time, sys, os #import required modules
 from pygame.locals import *
 
 #Constants
@@ -18,10 +18,10 @@ PLAYER_SPEED_RATIO = 15.0 #The number of frames it takes the player to travel 1 
 ENEMY_X_SIZE = [TERRAIN_X_SIZE / 2, 2 * TERRAIN_X_SIZE / 3, 2 * TERRAIN_X_SIZE / 3] #The pixel sizes of the enemy sprites
 ENEMY_Y_SIZE = [TERRAIN_Y_SIZE / 2, TERRAIN_Y_SIZE / 2, 2 * TERRAIN_Y_SIZE / 3]
 ENEMY_SPEED_RATIO = [10.0, 30.0, 10.0] #The number of frames it takes each enemy to travel 1 block
-BG_WIDTH = 8 * SCREEN_WIDTH
+BG_WIDTH = 8 * SCREEN_WIDTH #The pixel size of the background
 BG_HEIGHT = 2 * SCREEN_HEIGHT
 
-if SOUND_ENABLED == "y":
+if SOUND_ENABLED == "y": #start pygame, and the mixer if sound is enabled
     pygame.mixer.pre_init(44100, -16, 2, 2048)
     pygame.init()
     pygame.mixer.init()
@@ -29,14 +29,14 @@ elif SOUND_ENABLED == "n":
     pygame.init()
 else:
     sys.exit()
-pygame.display.set_caption("Sugar Steed")
+pygame.display.set_caption("Sugar Steed") #Add the title
 
 #This class tracks data related to the player.
 #There should only be one instance of this class.
 class Player:
     def __init__(self, parent, x_veloc):
         self.parent = parent
-        #loads the player animation and scales it to the required size
+        #loads the player animations and scales them to the required size
         self.image = []
         for anim_frame in range(12):
             self.image.append(pygame.transform.scale(pygame.image.load("anim\player" + str(anim_frame) + ".png"), (PLAYER_X_SIZE, PLAYER_Y_SIZE)))
@@ -47,10 +47,10 @@ class Player:
         self.y_veloc = 0.0
         self.x = 0 #initialize player's "actual" position and animation value
         self.y = 0
-        if SOUND_ENABLED == "y":
+        if SOUND_ENABLED == "y": #Load player sounds
             self.injure_sound = pygame.mixer.Sound(r"Sounds\Hurt.wav")
             self.jump_sound = pygame.mixer.Sound(r"Sounds\Jump.wav")
-        self.anim_frame = 3
+        self.anim_frame = 3 #The player's starting animation frame
         self.falling = False #initialize gravity-related variables
         self.just_landed = False
     def move(self, xm, ym): #adjusts the player's position
@@ -105,7 +105,7 @@ class Player:
         if pygame.key.get_pressed()[K_UP] and self.falling == False and self.just_landed == False: #allows jumping while on the ground
             self.falling = True
             self.y_veloc = -TERRAIN_Y_SIZE / 4.5
-            if SOUND_ENABLED == "y":
+            if SOUND_ENABLED == "y": #play the jump sound
                 self.jump_sound.play()
     def gravity(self): #checks if the player has collided with the terrain
         if self.falling == False: #if the player is not falling and is not standing on a block, begin falling
@@ -116,9 +116,9 @@ class Player:
                     if Rect(self.x, self.y, self.rect.width, self.rect.height).colliderect(terrain.rect) and self.y <= terrain.rect.top: #if stuck in the ground, unstick the player
                         self.y = self.y - TERRAIN_Y_SIZE / 24
                         return
-                    elif Rect(self.x, self.y + TERRAIN_Y_SIZE / 24, self.rect.width, self.rect.height).colliderect(terrain.rect):
+                    elif Rect(self.x, self.y + TERRAIN_Y_SIZE / 24, self.rect.width, self.rect.height).colliderect(terrain.rect): #if standing on a block, continue not falling
                         return
-            self.falling = True
+            self.falling = True #if in midair, start falling
             return
         else: #if the player is falling
             self.y_veloc = self.y_veloc + TERRAIN_Y_SIZE / 60.0 #accelerate downward
@@ -135,7 +135,7 @@ class Player:
                             if terrain.ID <= 9:
                                 self.falling = False
                                 self.y_veloc = 0.0
-                                self.y = self.y + dist
+                                self.y = self.y + dist #Places the player at the point of collision
                                 self.just_landed = True
                                 return
         self.move(0, self.y_veloc) #Actually move the player
@@ -174,12 +174,12 @@ class Enemy:
         self.y = y_coord * TERRAIN_Y_SIZE
         self.x_veloc = 0
         self.y_veloc = 0
-        self.falling = False
+        self.falling = False 
         self.just_landed = False
         self.next_direction = -1 #This is only used by bears and wolves
         self.dir_swapped = True #This is used by wolves only
         self.anim_frame = 2
-    def move(self, xm, ym):
+    def move(self, xm, ym): #moves the enemy, and their rectangle to match
         self.x = self.x + xm
         self.y = self.y + ym
         self.rect.left = self.x
@@ -218,7 +218,7 @@ class Enemy:
                             self.death()
                             return
         self.move(0, self.y_veloc) #Actually move the enemy
-    def AI(self):
+    def AI(self): #Perform enemy behavior based on ID
         if self.ID == 0: #Perform snake behavior
             if not self.parent.player.falling and not self.falling: #Chase the player while both are grounded
                 if self.parent.player.x <= self.rect.left + SCREEN_WIDTH / 2 + self.rect.width and self.rect.left <= self.parent.player.x: #If the snake is onscreen to the left, it heads right
@@ -240,7 +240,7 @@ class Enemy:
                     self.next_direction = -self.next_direction
         elif self.ID == 2: #Perform wolf behavior
             if not self.falling:
-                if self.parent.frame_tick % 80 == 0: #Jump at regular intervals
+                if self.parent.frame_tick % (FPS * 2) == 0: #Jump forward every 2 seconds
                     self.x_veloc = self.next_direction
                     self.y_veloc = -TERRAIN_Y_SIZE / 4.5
                     self.falling = True
@@ -315,28 +315,28 @@ class Controller:
     def __init__(self, width, height): #This generates most other top-level class instances.
         self.frame_tick = 0 #Used for bear spawning
         self.game_end = False #Flag for beating the last level
-        self.window = pygame.display.set_mode([width, height])
+        self.window = pygame.display.set_mode([width, height]) #the game window
         self.player = Player(self, 0)
         self.mainClock = pygame.time.Clock()
         self.score = 0
         self.lost_score = 0
         self.terrain_textures = []
         self.font = pygame.font.SysFont("", 48)
-        self.splash = pygame.transform.scale(pygame.image.load(r"anim\splash.png"), (SCREEN_WIDTH, SCREEN_HEIGHT))
+        self.splash = pygame.transform.scale(pygame.image.load(r"anim\splash.png"), (SCREEN_WIDTH, SCREEN_HEIGHT)) #the opening screen
         for ID in range(22): #Add the terrain texture list to memory
             self.terrain_textures.append(self.create_terrain_texture(ID))
         self.enemy_textures = []
         self.create_enemy_textures()
         self.enemy_sounds = []
-        if SOUND_ENABLED == "y":
+        if SOUND_ENABLED == "y": #load enemy sounds and music
             for ID in range(3):
                 self.enemy_sounds.append(pygame.mixer.Sound("Sounds\eHurt" + str(ID) + ".wav"))
             pygame.mixer.music.load("Sounds\music.wav")
         self.terrain_list = []
         self.enemy_list = []
-        self.background_texture = pygame.transform.scale(pygame.image.load(r"anim\Background.png"), (BG_WIDTH, BG_HEIGHT))
-        self.parallax = [0, -SCREEN_HEIGHT]
-        self.parallax_old = [0, -SCREEN_HEIGHT]
+        self.background_texture = pygame.transform.scale(pygame.image.load(r"anim\Background.png"), (BG_WIDTH, BG_HEIGHT)) #The background image
+        self.parallax = [0, -SCREEN_HEIGHT] #The values that determine where to draw the background
+        self.parallax_old = [0, -SCREEN_HEIGHT] #The values that determine where the background was when you began a level
         self.level = 1
         self.load_level(self.level)
         self.messages = pygame.transform.scale(pygame.image.load(r"anim\Victory.png"), (SCREEN_WIDTH / 2, SCREEN_HEIGHT / 8))
@@ -346,15 +346,15 @@ class Controller:
         self.update_enemies()
         self.update_window()
         self.frame_tick = self.frame_tick + 1
-        if self.lost_score > 0:
+        if self.lost_score > 0: #slowly decrements your score
             self.lost_score = self.lost_score - 2
             self.score = self.score - 2
         return self.game_end
     def update_window(self): #Updates the display
         self.draw_stuff()
         pygame.display.update() #Move drawn objects to the screen
-    def update_enemies(self):
-        if self.frame_tick % 120 == 0:
+    def update_enemies(self): #Updates each enemy
+        if self.frame_tick % (FPS * 3) == 0:  #Spawn bears from bear caves every 3 seconds
             for terrain in self.terrain_list:
                 if terrain.ID == 21:
                     self.enemy_list.append(Enemy(self, 1, terrain.rect.left / TERRAIN_X_SIZE, (terrain.rect.top) / TERRAIN_Y_SIZE + 1.0/2))
@@ -364,7 +364,7 @@ class Controller:
             enemy.movement_check()
             enemy.determine_animation_frame()
     def draw_stuff(self):
-        self.window.blit(self.background_texture, Rect(self.parallax[0], self.parallax[1], 0, 0)) #Draw the background
+        self.window.blit(self.background_texture, Rect(self.parallax[0], self.parallax[1], 0, 0)) #Draw the background twice
         self.window.blit(self.background_texture, Rect(self.parallax[0] + BG_WIDTH, self.parallax[1], 0, 0))
         for terrain in self.terrain_list: #Draw each terrain object
             if terrain.ID <= 21: #Excludes script terrain from the draw procedure
@@ -373,11 +373,12 @@ class Controller:
                     if draw_x <= SCREEN_WIDTH and draw_x >= -TERRAIN_X_SIZE and draw_y <= SCREEN_HEIGHT and draw_y >= -TERRAIN_Y_SIZE:
                         self.window.blit(self.terrain_textures[terrain.ID], Rect(draw_x, draw_y, TERRAIN_X_SIZE, TERRAIN_Y_SIZE + 1))
         self.window.blit(self.player.image[self.player.anim_frame], self.player.rect) #Draw the player
-        for enemy in self.enemy_list: #Draw each enemy
+        for enemy in self.enemy_list: #Draw each enemy if onscreen
             draw_x = enemy.rect.left - self.player.x + self.player.rect.left
             draw_y = enemy.rect.top - self.player.y + self.player.rect.top
             if draw_x <= SCREEN_WIDTH and draw_x >= -TERRAIN_X_SIZE and draw_y <= SCREEN_HEIGHT and draw_y >= -TERRAIN_Y_SIZE:
                 self.window.blit(self.enemy_textures[enemy.ID * 10 + enemy.anim_frame], Rect(draw_x, draw_y, ENEMY_X_SIZE[enemy.ID], ENEMY_Y_SIZE[enemy.ID]))
+        #Produce and draw the HUD
         clock_text = self.font.render("Level " + str(self.level) + ", Time: "  + str(int((FPS*60 - self.frame_tick)/FPS)), True, BLACK)
         clock_rect = clock_text.get_rect()
         score_text = self.font.render("Score: " + str(self.score), True, BLACK)
@@ -464,7 +465,7 @@ class Controller:
                     if event.type == KEYDOWN:
                         if event.key == K_SPACE:
                             STOP = True
-                            if SOUND_ENABLED == "y":
+                            if SOUND_ENABLED == "y": #play the startup sound
                                 pygame.mixer.Sound(r"Sounds\Open.wav").play()
                             self.window.fill(BLACK) #Clear the screen
                             pygame.display.update()
@@ -475,10 +476,11 @@ class Controller:
             while not STOP: #the game loop
                 self.mainClock.tick(FPS) #Wait until the next frame
                 STOP = self.update_all() #Update, and determine if the game was beaten
-                for event in pygame.event.get(): #If the window is closed, exit pygame
+                for event in pygame.event.get(): #If the window is closed, exit
                     if event.type == QUIT:
                         STOP = True
                         pygame.quit()
+                        sys.exit()
             STOP = False
             victor_text1 = self.font.render("Congratulations, you have prevailed!", True, WHITE) #Generate the end game text
             victor_rect1 = victor_text1.get_rect()
@@ -510,11 +512,11 @@ class Controller:
                         else: #End the game if another key is hit
                             pygame.quit()
                             sys.exit()
-def nearby(player, terrain):
+def nearby(entity, terrain):
     """
-    Determines if a player object and a terrain object are in a certain range of each other. Returns True if so, and False otherwise.
+    Determines if an entity object and a terrain object are in a certain range of each other. Returns True if so, and False otherwise.
     """
-    if ((player.x - terrain.rect.left) * (player.x - terrain.rect.left) + (player.y - terrain.rect.top) * (player.y - terrain.rect.top)) / TERRAIN_X_SIZE <= TERRAIN_X_SIZE + TERRAIN_Y_SIZE:
+    if ((entity.x - terrain.rect.left) * (entity.x - terrain.rect.left) + (entity.y - terrain.rect.top) * (entity.y - terrain.rect.top)) / TERRAIN_X_SIZE <= TERRAIN_X_SIZE + TERRAIN_Y_SIZE:
         return True
     return False
 
